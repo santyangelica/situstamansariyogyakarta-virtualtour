@@ -1,0 +1,1350 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Peta Interaktif Taman Sari</title>
+
+<!-- MAPBOX -->
+<link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet">
+<script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+
+<style>
+/* =========================================================
+   GLOBAL
+   ========================================================= */
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:Arial,sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+
+html,body{
+  height:100%;
+  overflow:hidden;
+}
+
+body{
+  background:#f5f7fb;
+  color:#1f2937;
+}
+
+/* =========================================================
+   LAYOUT GRID -- DESKTOP (>= 1024px)
+   3 kolom: sidebar kiri / map / sidebar kanan
+   ========================================================= */
+.app{
+  display:grid;
+  grid-template-columns:340px minmax(0,1fr) 380px;
+  height:100vh;
+  height:100dvh;
+}
+
+/* =========================================================
+   SIDEBAR KIRI (PETUNJUK + KONTROL)
+   ========================================================= */
+.sidebar-left{
+  background:#9b6b43;
+  color:#fff;
+  padding:28px 26px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+.sidebar-left h1{
+  font-size:28px;
+  letter-spacing:0.5px;
+  margin-bottom:18px;
+}
+
+.sidebar-left .desc-list{
+  list-style:none;
+  padding:0;
+  margin:0 0 14px;
+}
+
+.sidebar-left .desc-list li{
+  position:relative;
+  padding:6px 0 6px 20px;
+  font-size:14.5px;
+  line-height:1.65;
+  color:#fff7ef;
+}
+
+.sidebar-left .desc-list li::before{
+  content:"";
+  position:absolute;
+  left:4px;
+  top:14px;
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#fff7ef;
+}
+
+.sidebar-left h2{
+  margin-top:22px;
+  margin-bottom:10px;
+  font-size:18px;
+  letter-spacing:0.4px;
+}
+
+/* SELECT */
+.select-box{
+  width:100%;
+  padding:12px 14px;
+  border-radius:12px;
+  border:none;
+  font-size:15px;
+  margin-bottom:12px;
+  background:#fff;
+  color:#111827;
+  -webkit-appearance:none;
+  appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%239b6b43' d='M6 8L0 0h12z'/></svg>");
+  background-repeat:no-repeat;
+  background-position:right 14px center;
+  padding-right:38px;
+}
+
+/* TOMBOL "PILIH TITIK AWAL" -- mobile-friendly alternatif dblclick */
+.btn-pick-origin{
+  width:100%;
+  padding:13px 16px;
+  margin-top:8px;
+  border:none;
+  border-radius:12px;
+  background:#fff;
+  color:#9b6b43;
+  font-size:14.5px;
+  font-weight:700;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  transition:.2s;
+}
+
+.btn-pick-origin.active{
+  background:#c1121f;
+  color:#fff;
+  animation:pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse{
+  0%,100%{ box-shadow:0 0 0 0 rgba(193,18,31,.55); }
+  50%   { box-shadow:0 0 0 10px rgba(193,18,31,0); }
+}
+
+/* PANEL INFO RUTE */
+.route-info{
+  margin-top:18px;
+  background:#f8f3ef;
+  color:#1f2937;
+  padding:16px 18px;
+  border-radius:14px;
+  line-height:1.65;
+  box-shadow:0 8px 22px rgba(0,0,0,0.14);
+  font-size:14px;
+}
+
+.route-info h3{
+  font-size:17px;
+  color:#9b6b43;
+  margin-bottom:10px;
+}
+
+.route-info .empty{
+  color:#6b7280;
+  font-style:italic;
+}
+
+.route-info .row{
+  display:flex;
+  justify-content:space-between;
+  padding:6px 0;
+  border-bottom:1px dashed #e5d6c6;
+}
+
+.route-info .row:last-child{ border-bottom:none; }
+
+.route-info .row b{ color:#9b6b43; }
+
+/* TOMBOL TUNJUK PETUNJUK */
+.btn-show-route{
+  width:100%;
+  padding:12px;
+  border:none;
+  border-radius:12px;
+  background:#c1121f;
+  color:#fff;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  margin-top:12px;
+  transition:.2s;
+}
+
+.btn-show-route.open{ background:#374151; }
+
+.route-steps{
+  display:none;
+  margin-top:12px;
+}
+
+.route-steps.open{ display:block; }
+
+.route-step{
+  background:#fff;
+  border-left:3px solid #9b6b43;
+  padding:10px 12px;
+  border-radius:8px;
+  margin-bottom:8px;
+  font-size:13px;
+  line-height:1.6;
+  color:#1f2937;
+}
+
+.route-step b{ color:#9b6b43; }
+
+.route-step .dist{
+  display:block;
+  margin-top:4px;
+  font-size:12px;
+  color:#6b7280;
+}
+
+/* =========================================================
+   MAP
+   ========================================================= */
+.map-wrap{
+  position:relative;
+  min-width:0;
+  min-height:0;
+  background:#000;
+}
+
+#map{
+  width:100%;
+  height:100%;
+}
+
+/* TOAST FEEDBACK */
+.toast{
+  position:absolute;
+  top:14px;
+  left:50%;
+  transform:translateX(-50%) translateY(-40px);
+  background:rgba(31,41,55,.95);
+  color:#fff;
+  padding:10px 18px;
+  border-radius:999px;
+  font-size:13px;
+  font-weight:600;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+  opacity:0;
+  pointer-events:none;
+  transition:.3s ease;
+  z-index:50;
+  max-width:90%;
+  text-align:center;
+}
+
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+
+/* =========================================================
+   SIDEBAR KANAN (VIRTUAL TOUR PREVIEW)
+   ========================================================= */
+.sidebar-right{
+  background:#fff;
+  padding:28px 26px;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  box-shadow:-2px 0 15px rgba(0,0,0,0.08);
+}
+
+.sidebar-right h2{
+  font-size:22px;
+  margin-bottom:18px;
+  letter-spacing:0.4px;
+  color:#9b6b43;
+}
+
+.vt-card{
+  background:#9b6b43;
+  padding:22px;
+  border-radius:20px;
+  color:#fff;
+  box-shadow:0 14px 32px rgba(139,94,60,0.22);
+}
+
+.vt-card h3{
+  font-size:22px;
+  line-height:1.25;
+  margin-bottom:12px;
+}
+
+.vt-card > p{
+  line-height:1.6;
+  font-size:14.5px;
+  margin-bottom:14px;
+}
+
+/* MINI TOUR PREVIEW */
+.mini-tour{
+  width:100%;
+  aspect-ratio:16/10;
+  border-radius:16px;
+  overflow:hidden;
+  background:#7d553a;
+  box-shadow:0 12px 28px rgba(0,0,0,0.18);
+  margin-bottom:14px;
+  position:relative;
+}
+
+.mini-tour iframe{
+  width:100%;
+  height:220%;
+  position:absolute;
+  left:0;
+  top:-62%;
+  border:0;
+  display:block;
+  pointer-events:none;
+}
+
+.mini-tour::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to top, rgba(0,0,0,0.18), rgba(0,0,0,0));
+  pointer-events:none;
+}
+
+.mini-tour-link{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  display:block;
+  font-size:0;
+  text-decoration:none;
+  color:transparent;
+}
+
+.tour-open-link{
+  display:inline-block;
+  padding:11px 18px;
+  background:#fff;
+  color:#9b6b43;
+  text-decoration:none;
+  border-radius:10px;
+  font-weight:700;
+  font-size:14px;
+}
+
+#building-info{
+  margin-top:20px;
+  padding-top:18px;
+  border-top:1px solid rgba(255,255,255,0.24);
+}
+
+#building-info h3{
+  font-size:18px;
+  line-height:1.3;
+  margin-bottom:10px;
+  color:#fff;
+}
+
+#building-info p{
+  font-size:14px;
+  line-height:1.7;
+  text-align:justify;
+  color:#fff7ef;
+}
+
+#building-info .popup-btn{
+  display:inline-block;
+  margin-top:14px;
+  padding:11px 18px;
+  background:#c1121f;
+  color:#fff;
+  text-decoration:none;
+  border-radius:10px;
+  font-weight:700;
+  font-size:14px;
+}
+
+/* =========================================================
+   MAPBOX POPUP STYLE
+   ========================================================= */
+.mapboxgl-popup-content{
+  border-radius:14px;
+  padding:14px 16px;
+  font-family:Arial,sans-serif;
+  max-width:78vw;
+}
+
+.mapboxgl-popup-content h3{
+  font-size:16px;
+  color:#9b6b43;
+  margin-bottom:10px;
+}
+
+.popup-btn{
+  display:inline-block;
+  padding:9px 14px;
+  background:#c1121f;
+  color:#fff;
+  text-decoration:none;
+  border-radius:8px;
+  font-size:13px;
+  font-weight:700;
+}
+
+/* MARKER KENDARAAN */
+.vehicle-marker{
+  min-width:42px;
+  padding:6px 8px;
+  border-radius:999px;
+  background:#fff;
+  color:#081229;
+  font-size:13px;
+  font-weight:700;
+  text-align:center;
+  border:2px solid #c1121f;
+  filter:drop-shadow(0 0 4px rgba(0,0,0,.6));
+}
+
+.vehicle-icon{
+  width:42px;
+  height:42px;
+  background:#fff;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.3);
+  border:3px solid #9b6b43;
+}
+
+/* =========================================================
+   MOBILE TOGGLE BUTTONS  (dipakai mode mobile)
+   ========================================================= */
+.fab-group{
+  display:none;
+  position:fixed;
+  right:14px;
+  bottom:calc(env(safe-area-inset-bottom) + 14px);
+  z-index:60;
+  flex-direction:column;
+  gap:10px;
+}
+
+.fab{
+  width:54px;
+  height:54px;
+  border-radius:50%;
+  border:none;
+  background:#9b6b43;
+  color:#fff;
+  font-size:22px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  box-shadow:0 6px 16px rgba(0,0,0,.28);
+  transition:.2s;
+  position:relative;
+}
+
+.fab.alt{ background:#c1121f; }
+
+.fab:active{ transform:scale(.94); }
+
+.fab .badge{
+  position:absolute;
+  top:-4px;
+  right:-4px;
+  min-width:20px;
+  height:20px;
+  border-radius:999px;
+  background:#fde047;
+  color:#92400e;
+  font-size:11px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 5px;
+  box-shadow:0 2px 6px rgba(0,0,0,.25);
+}
+
+/* OVERLAY untuk mobile drawer */
+.drawer-backdrop{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  z-index:70;
+  opacity:0;
+  transition:opacity .25s;
+}
+
+.drawer-backdrop.show{
+  display:block;
+  opacity:1;
+}
+
+/* =========================================================
+   RESPONSIVE BREAKPOINTS
+   =========================================================
+   - 1280-1024 : layout 3-kolom dengan sidebar lebih sempit
+   - <=1023    : layout 2 kolom (sidebar kiri jadi drawer)
+   - <=768     : full mobile drawer & FAB
+   - <=480     : mobile kecil
+   - <=360     : mobile sangat kecil
+*/
+
+/* Small desktop / large tablet */
+@media (max-width:1280px){
+  .app{
+    grid-template-columns:300px minmax(0,1fr) 340px;
+  }
+  .sidebar-left,.sidebar-right{ padding:24px 20px; }
+  .sidebar-left h1{ font-size:24px; }
+  .sidebar-right h2{ font-size:20px; }
+}
+
+/* Tablet besar */
+@media (max-width:1023px){
+  /* Map jadi dominan, sidebars jadi drawer */
+  .app{
+    grid-template-columns:1fr;
+    grid-template-rows:1fr;
+  }
+
+  .sidebar-left,
+  .sidebar-right{
+    position:fixed;
+    top:0;
+    height:100vh;
+    height:100dvh;
+    width:min(360px, 88vw);
+    z-index:80;
+    transition:transform .28s ease;
+    box-shadow:0 0 30px rgba(0,0,0,.25);
+    padding-top:max(28px, env(safe-area-inset-top));
+    padding-bottom:max(28px, env(safe-area-inset-bottom));
+  }
+
+  .sidebar-left{
+    left:0;
+    transform:translateX(-105%);
+  }
+
+  .sidebar-right{
+    right:0;
+    transform:translateX(105%);
+  }
+
+  .sidebar-left.open{ transform:translateX(0); }
+  .sidebar-right.open{ transform:translateX(0); }
+
+  /* Map full */
+  .map-wrap{
+    grid-column:1 / -1;
+    width:100%;
+    height:100vh;
+    height:100dvh;
+  }
+
+  .fab-group{ display:flex; }
+
+  /* Tombol tutup di dalam drawer */
+  .drawer-close{
+    position:absolute;
+    top:12px;
+    right:12px;
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    border:none;
+    background:rgba(255,255,255,.18);
+    color:#fff;
+    font-size:18px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    line-height:1;
+  }
+
+  .sidebar-right .drawer-close{
+    background:rgba(155,107,67,.15);
+    color:#9b6b43;
+  }
+}
+
+/* Mobile */
+@media (max-width:768px){
+  .sidebar-left,.sidebar-right{
+    width:min(340px, 92vw);
+    padding:24px 20px;
+    padding-top:max(28px, env(safe-area-inset-top));
+    padding-bottom:max(40px, env(safe-area-inset-bottom));
+  }
+
+  .sidebar-left h1{ font-size:22px; margin-bottom:14px; }
+  .sidebar-left h2{ font-size:16px; margin-top:16px; }
+  .sidebar-left .desc-list li{ font-size:13.5px; }
+
+  .sidebar-right h2{ font-size:20px; }
+  .vt-card h3{ font-size:20px; }
+  .vt-card > p{ font-size:14px; }
+  #building-info h3{ font-size:17px; }
+  #building-info p{ font-size:13.5px; }
+
+  .mapboxgl-popup-content{
+    max-width:80vw;
+    font-size:14px;
+    padding:12px 14px;
+  }
+  .mapboxgl-popup-content h3{ font-size:15px; }
+
+  .vehicle-icon{ width:38px; height:38px; font-size:20px; }
+
+  .toast{
+    top:max(12px, env(safe-area-inset-top));
+    font-size:12.5px;
+    padding:9px 14px;
+  }
+
+  .fab{ width:50px; height:50px; font-size:20px; }
+}
+
+/* Mobile kecil */
+@media (max-width:480px){
+  .sidebar-left{ padding:22px 18px; padding-top:max(26px, env(safe-area-inset-top)); }
+  .sidebar-right{ padding:22px 18px; padding-top:max(26px, env(safe-area-inset-top)); }
+
+  .sidebar-left h1{ font-size:20px; }
+  .vt-card{ padding:18px; border-radius:18px; }
+  .vt-card h3{ font-size:18px; }
+
+  .fab-group{ right:10px; bottom:calc(env(safe-area-inset-bottom) + 10px); gap:8px; }
+  .fab{ width:48px; height:48px; font-size:19px; }
+}
+
+/* Mobile sangat kecil */
+@media (max-width:360px){
+  .sidebar-left,.sidebar-right{
+    width:96vw;
+    padding:18px 14px;
+  }
+  .sidebar-left h1{ font-size:18px; }
+  .sidebar-left .desc-list li{ font-size:13px; padding-left:18px; }
+  .select-box{ font-size:14px; padding:11px 12px; padding-right:34px; }
+  .btn-pick-origin{ font-size:13.5px; padding:11px 12px; }
+  .vt-card{ padding:16px; border-radius:16px; }
+  .vt-card h3{ font-size:17px; }
+  .tour-open-link{ font-size:13px; padding:10px 14px; }
+  #building-info p{ font-size:13px; }
+  .mapboxgl-popup-content{ max-width:84vw; padding:10px 12px; }
+}
+
+/* Landscape low-height phones */
+@media (max-height:480px) and (orientation:landscape){
+  .sidebar-left,.sidebar-right{
+    padding-top:14px;
+    padding-bottom:14px;
+  }
+  .sidebar-left h1{ font-size:18px; margin-bottom:10px; }
+  .sidebar-left h2{ font-size:14px; margin-top:12px; }
+}
+
+/* Pastikan tombol mapbox tidak ketutup FAB di mobile */
+@media (max-width:1023px){
+  .mapboxgl-ctrl-bottom-right{
+    bottom:calc(env(safe-area-inset-bottom) + 80px) !important;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+  <!-- =========================
+       SIDEBAR KIRI
+       ========================= -->
+  <aside class="sidebar-left" id="sidebarLeft" aria-label="Petunjuk dan Kontrol">
+    <button class="drawer-close" type="button" aria-label="Tutup panel" onclick="toggleDrawer('left', false)">&times;</button>
+
+    <h1>PETUNJUK</h1>
+
+    <ul class="desc-list">
+      <li>Tekan tombol <b>Pilih Titik Awal</b> lalu ketuk peta.</li>
+      <li>Di laptop bisa juga klik dua kali pada peta.</li>
+      <li>Tujuan akhir otomatis menuju Tamansari Yogyakarta.</li>
+      <li>Garis merah menunjukkan rute tercepat kendaraan.</li>
+      <li>Klik bangunan atau kolam untuk melihat informasi.</li>
+      <li>Klik tombol Virtual Tour untuk masuk ke panorama 360&deg;.</li>
+    </ul>
+
+    <h2>PILIH KENDARAAN</h2>
+    <select id="vehicle" class="select-box">
+      <option value="driving">Mobil / Roda 4</option>
+      <option value="cycling">Motor / Roda 2</option>
+    </select>
+
+    <h2>BASEMAP</h2>
+    <select id="basemap" class="select-box">
+      <option value="satellite-streets-v12">Satellite Streets</option>
+      <option value="streets-v12">Street</option>
+      <option value="light-v11">Light</option>
+      <option value="dark-v11">Dark</option>
+    </select>
+
+    <h2>PILIH TITIK AWAL</h2>
+    <button id="btnPickOrigin" class="btn-pick-origin" type="button">
+      <span>📍</span> <span id="btnPickOriginText">Pilih Titik Awal di Peta</span>
+    </button>
+
+    <div class="route-info" id="routeInfo">
+      <h3>Informasi Rute</h3>
+      <p class="empty">Belum ada rute dipilih. Tekan tombol di atas lalu ketuk peta.</p>
+    </div>
+
+    <button id="btnShowSteps" class="btn-show-route" type="button" style="display:none;">Petunjuk Rute Tercepat</button>
+    <div id="routeSteps" class="route-steps"></div>
+  </aside>
+
+  <!-- =========================
+       MAP
+       ========================= -->
+  <div class="map-wrap">
+    <div id="map"></div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <!-- =========================
+       SIDEBAR KANAN
+       ========================= -->
+  <aside class="sidebar-right" id="sidebarRight" aria-label="Virtual Tour Preview">
+    <button class="drawer-close" type="button" aria-label="Tutup panel" onclick="toggleDrawer('right', false)">&times;</button>
+
+    <h2>VIRTUAL TOUR 360&deg;</h2>
+
+    <div class="vt-card">
+      <h3>Situs Tamansari Yogyakarta</h3>
+      <p>Virtual Tour 360&deg; Situs Tamansari Yogyakarta</p>
+
+      <div class="mini-tour">
+        <iframe id="miniTourFrame" src="../virtualtour/index.htm?media-index=1&preview=1&clean=3" title="Preview Virtual Tour Tamansari Yogyakarta" loading="lazy"></iframe>
+        <a id="miniTourLink" class="mini-tour-link" href="virtualtour.html?media-index=1" aria-label="Buka Virtual Tour">Buka Virtual Tour</a>
+      </div>
+
+      <a id="openTourLink" class="tour-open-link" href="virtualtour.html?media-index=1">Lihat Lebih Besar</a>
+
+      <div id="building-info">
+        <h3>Informasi Bangunan</h3>
+        <p>Klik bangunan 3D pada peta untuk melihat sejarah singkat dan masuk langsung ke panorama bangunan tersebut.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- =========================
+       FAB MOBILE
+       ========================= -->
+  <div class="fab-group" id="fabGroup">
+    <button class="fab" type="button" aria-label="Buka petunjuk" onclick="toggleDrawer('left', true)">
+      <span>☰</span>
+    </button>
+    <button class="fab alt" type="button" aria-label="Buka info virtual tour" onclick="toggleDrawer('right', true)">
+      <span>🏛️</span>
+      <span class="badge" id="fabBadge" style="display:none;">!</span>
+    </button>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeAllDrawers()"></div>
+
+</div>
+
+<script>
+/* ============================================================
+   STATE & UTILS
+   ============================================================ */
+const tamanSari = [110.3594, -7.8101];
+let originMarker = null;
+let vehicleMarker = null;
+let pickMode = false;
+
+function showToast(msg, ms = 2200){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+/* ============================================================
+   DRAWER (mobile)
+   ============================================================ */
+function toggleDrawer(side, open){
+  const left  = document.getElementById('sidebarLeft');
+  const right = document.getElementById('sidebarRight');
+  const back  = document.getElementById('drawerBackdrop');
+
+  if(side === 'left'){
+    if(open){ left.classList.add('open'); right.classList.remove('open'); }
+    else    { left.classList.remove('open'); }
+  } else {
+    if(open){ right.classList.add('open'); left.classList.remove('open'); }
+    else    { right.classList.remove('open'); }
+  }
+
+  const anyOpen = left.classList.contains('open') || right.classList.contains('open');
+  back.classList.toggle('show', anyOpen);
+}
+
+function closeAllDrawers(){
+  document.getElementById('sidebarLeft').classList.remove('open');
+  document.getElementById('sidebarRight').classList.remove('open');
+  document.getElementById('drawerBackdrop').classList.remove('show');
+}
+
+/* Tutup drawer saat resize ke desktop */
+window.addEventListener('resize', () => {
+  if(window.innerWidth > 1023) closeAllDrawers();
+});
+
+/* ============================================================
+   MAPBOX SETUP
+   ============================================================ */
+mapboxgl.accessToken = 'pk.eyJ1Ijoic2FudHlhbmdlbGljYTEwIiwiYSI6ImNtcDRndnY5ZjAydTIyc3I3OWhsZzN4aW4ifQ.zOemODW_tdEUHJ2wHCMb2A';
+
+const map = new mapboxgl.Map({
+  container: 'map',
+  style: 'mapbox://styles/mapbox/satellite-streets-v12',
+  center: tamanSari,
+  zoom: 16,
+  pitch: 30,
+  bearing: 0,
+  antialias: true,
+  cooperativeGestures: false
+});
+
+map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
+map.addControl(
+  new mapboxgl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+    trackUserLocation: true
+  }),
+  'top-right'
+);
+
+/* ============================================================
+   LAYER LOADER
+   ============================================================ */
+function loadTamansariLayers(){
+  if(!map.getSource('tamansari')){
+    map.addSource('tamansari', {
+      type: 'geojson',
+      data: '../assets/data/tamansari.geojson'
+    });
+  }
+
+  if(!map.getLayer('bangunan-3d')){
+    map.addLayer({
+      id: 'bangunan-3d',
+      type: 'fill-extrusion',
+      source: 'tamansari',
+      filter: [
+        'any',
+        ['has','GEDHONG TEMANTEN'],
+        ['has','GEDHONG PANGUNJUKAN'],
+        ['has','GAPURO PANGGUNG'],
+        ['has','GEDHONG SEKAWAN'],
+        ['has','GEDHONG_SEKAWAN'],
+        ['has','MASUK UMBUL'],
+        ['has','KOMPLEK BINANGUL'],
+        ['has','PINTU KELUAR'],
+        ['has','GAPURO AGUNG'],
+        ['has','GEDHONG LOPO LOPO']
+      ],
+      paint: {
+        'fill-extrusion-color': '#9b6b43',
+        'fill-extrusion-height': ['to-number', ['get','height']],
+        'fill-extrusion-base': 0,
+        'fill-extrusion-opacity': 0.85
+      }
+    });
+  }
+
+  if(!map.getLayer('kolam')){
+    map.addLayer({
+      id: 'kolam',
+      type: 'fill',
+      source: 'tamansari',
+      filter: [
+        'any',
+        ['has','UMBUL MUNCAR'],
+        ['has','UMBUL  BINANGUN'],
+        ['has','UMBUL KURAS']
+      ],
+      paint: {
+        'fill-color': '#38bdf8',
+        'fill-opacity': 0.65
+      }
+    });
+  }
+
+  if(!map.getLayer('outline')){
+    map.addLayer({
+      id: 'outline',
+      type: 'line',
+      source: 'tamansari',
+      paint: {
+        'line-color': '#f5e6d3',
+        'line-width': 0.7,
+        'line-opacity': 0.45
+      }
+    });
+  }
+}
+
+map.on('load', () => {
+  loadTamansariLayers();
+  map.resize();
+});
+
+/* Pastikan map ter-resize saat orientasi berubah */
+window.addEventListener('orientationchange', () => setTimeout(() => map.resize(), 200));
+window.addEventListener('resize', () => map.resize());
+
+/* ============================================================
+   POPUP DATA BANGUNAN
+   ============================================================ */
+const tourTargets = {
+  Gedhong_Temanten: {
+    mediaIndex: 1,
+    title: 'Gedhong Temanten',
+    history: 'Gedhong Temanten yang dalam bahasa jawa berarti pasangan atau pengantin, Pada masa Kesultanan Yogyakarta, tata ruang di lingkungan keraton sangat memperhatikan norma sosial, adat, serta etika pergaulan antara laki-laki dan perempuan yang bukan mahram. Oleh karena itu, penataan ruang di Gedhong Temanten dibuat terpisah antara laki-laki dan perempuan. Bagian utara dan selatan bangunan difungsikan secara berbeda untuk menjaga keteraturan dan privasi sesuai budaya serta nilai-nilai kesopanan yang berlaku pada masa itu.'
+  },
+  Gedhong_Pangunjukan: {
+    mediaIndex: 1,
+    title: 'Gedhong Pangunjukan',
+    history: 'Gedhong Pangunjukan berfungsi sebagai penyajian hidangan serta minuman bagi Sultan dan Keluarga Keraton.'
+  },
+  Gapuro_Panggung: {
+    mediaIndex: 3,
+    title: 'Gapuro Panggung',
+    history: 'Gapuro Pangggung pada masa Kesultanan Yogyakarta berfungsi sebagai tempat pengamatan dan menikmati pemandangan kawasan taman kerajaan. Bangunan ini digunakan oleh Sultan dan keluarga kerajaan untuk melihat area Tamansari dari sisi barat maupun timur serta melakukan pengawasan terhadap kawasan di sekitarnya.'
+  },
+  Gedhong_Sekawan1: {
+    mediaIndex: 12,
+    title: 'Gedhong Sekawan',
+    history: 'Gedhong Sekawan difungsikan sebagai ruang pembelajaran untuk membentuk kepribadian, tata krama, serta keterampilan perempuan bangsawan sesuai dengan adat dan aturan yang berlaku di lingkungan Keraton Yogyakarta. Para putri kerajaan diajarkan berbagai keterampilan tradisional dan etika kehidupan keraton, seperti tata cara berpakaian adat Jawa, penggunaan jarik, seni tari tradisional, memainkan gamelan, hingga tradisi menyirih.'
+  },
+  Gedhong_Sekawan2: {
+    mediaIndex: 19,
+    title: 'Gedhong Sekawan',
+    history: 'Gedhong Sekawan difungsikan sebagai ruang pembelajaran untuk membentuk kepribadian, tata krama, serta keterampilan perempuan bangsawan sesuai dengan adat dan aturan yang berlaku di lingkungan Keraton Yogyakarta. Para putri kerajaan diajarkan berbagai keterampilan tradisional dan etika kehidupan keraton, seperti tata cara berpakaian adat Jawa, penggunaan jarik, seni tari tradisional, memainkan gamelan, hingga tradisi menyirih.'
+  },
+  Gedhong_Sekawan3: {
+    mediaIndex: 20,
+    title: 'Gedhong Sekawan',
+    history: 'Gedhong Sekawan difungsikan sebagai ruang pembelajaran untuk membentuk kepribadian, tata krama, serta keterampilan perempuan bangsawan sesuai dengan adat dan aturan yang berlaku di lingkungan Keraton Yogyakarta. Para putri kerajaan diajarkan berbagai keterampilan tradisional dan etika kehidupan keraton, seperti tata cara berpakaian adat Jawa, penggunaan jarik, seni tari tradisional, memainkan gamelan, hingga tradisi menyirih.'
+  },
+  Gedhong_Sekawan4: {
+    mediaIndex: 25,
+    title: 'Gedhong Sekawan',
+    history: 'Gedhong Sekawan difungsikan sebagai ruang pembelajaran untuk membentuk kepribadian, tata krama, serta keterampilan perempuan bangsawan sesuai dengan adat dan aturan yang berlaku di lingkungan Keraton Yogyakarta. Para putri kerajaan diajarkan berbagai keterampilan tradisional dan etika kehidupan keraton, seperti tata cara berpakaian adat Jawa, penggunaan jarik, seni tari tradisional, memainkan gamelan, hingga tradisi menyirih.'
+  },
+  Masuk_Umbul: {
+    mediaIndex: 27,
+    title: 'Masuk Umbul',
+    history: 'Area masuk Umbul mengarahkan pengunjung menuju komplek Binangul dan 3 Umbul Tamansari Yogyakarta.'
+  },
+  Komplek_Binangul1: {
+    mediaIndex: 45,
+    title: 'Komplek Binangul',
+    history: 'Bagian utara Komplek Binangul di Tamansari pada masa dahulu digunakan sebagai tempat berganti pakaian bagi putri-putri kerajaan sebelum dan sesudah memasuki area pemandian. Ruangan tersebut menjadi bagian penting dalam mendukung aktivitas keluarga kerajaan di Tamansari dengan tetap menjaga kenyamanan, privasi, dan tata krama lingkungan keraton. Seiring berjalannya waktu dan berkembangnya fungsi Tamansari sebagai situs wisata budaya dan sejarah, bagian utara komplek tersebut kini dialihfungsikan menjadi ruang pameran. Ruang ini digunakan untuk menampilkan berbagai informasi mengenai kehidupan dan budaya Keraton Yogyakarta pada masa lampau, termasuk koleksi rempah-rempah tradisional serta lukisan bernilai historis dan budaya.'
+  },
+  Komplek_Binangul2: {
+    mediaIndex: 31,
+    title: 'Komplek Binangul',
+    history: 'Di sisi timur Komplek Binangun terdapat ruang perawatan putri kerajaan yang digunakan untuk pijat tradisional, sauna, dan luluran sebagai bagian dari tradisi perawatan tubuh bangsawan keraton. Sementara itu, sisi barat digunakan sebagai tempat meletakkan dan menyimpan pakaian para putri sebelum dan sesudah memasuki area pemandian.'
+  },
+  Pintu_Keluar: {
+    mediaIndex: 42,
+    title: 'Pintu Keluar',
+    history: 'Pintu Keluar menjadi akses akhir dari alur kunjungan pada Situs Tamansari Yogyakarta.'
+  },
+  Gapuro_Agung: {
+    mediaIndex: 54,
+    title: 'Gapuro Agung',
+    history: 'Gapuro Agung merupakan gerbang utama di Tamansari yang pada masa dahulu digunakan sebagai pintu masuk resmi bagi Sri Sultan Hamengkubuwono I dan keluarga kerajaan Kesultanan Yogyakarta. Bangunan ini memiliki fungsi penting sebagai akses utama menuju kompleks taman kerajaan yang bersifat privat dan eksklusif. Sebagai gerbang utama, Gapuro Agung menjadi simbol kehormatan dan kewibawaan kerajaan. Melalui pintu inilah Sri Sultan Hamengkubuwono I memasuki Tamansari untuk melakukan berbagai aktivitas kerajaan.'
+  },
+  Umbul_Muncar: {
+    mediaIndex: 51,
+    title: 'Umbul Muncar',
+    history: 'Umbul Muncar namanya berasal dari kata “muncar” atau “muncrat" yang merujuk pada air yang memancar keluar dari dalam tanah. Kolam ini dahulu digunakan sebagai tempat bermain air bagi anak-anak perempuan kerajaan yang masih berusia kecil, khususnya yang telah mulai memahami aktivitas bermain dan berinteraksi di lingkungan pemandian kerajaan.'
+  },
+  Umbul_Binangun: {
+    mediaIndex: 51,
+    title: 'Umbul Binangun',
+    history: 'Umbul Binangun merupakan kolam pemandian utama di Situs Tamansari yang diperuntukkan bagi putri-putri kerajaan yang telah memasuki usia remaja. Nama “Binangun” berasal dari kata “bangun” atau “membangun,” yang memiliki makna pembinaan, pendidikan, dan proses pendewasaan. Kolam ini digunakan sebagai tempat melatih kemampuan fisik serta pembentukan karakter para putri kerajaan. Di tempat ini mereka belajar berenang, menyelam, serta melatih kemampuan menahan napas di dalam air. Aktivitas tersebut tidak hanya bertujuan untuk rekreasi, tetapi juga sebagai bagian dari pendidikan jasmani dan pembentukan kedisiplinan bagi perempuan bangsawan keraton.'
+  },
+  Umbul_Kuras: {
+    mediaIndex: 36,
+    title: 'Umbul Kuras',
+    history: 'Umbul Kuras merupakan kolam pemandian yang diperuntukkan bagi perempuan dewasa di lingkungan kerajaan. Nama “Kuras” berkaitan dengan sistem aliran air yang keluar dari kolam dan kemudian mengalir menuju Kali Winongo sebagai bagian dari sistem sirkulasi air Tamansari. Kolam ini memiliki makna simbolis mengenai proses kedewasaan dan penyucian diri. Air yang terus mengalir keluar dari kolam melambangkan perjalanan kehidupan, kematangan, serta pembersihan lahir dan batin dalam filosofi budaya Jawa.'
+  },
+  Gedhong_LopoLopo: {
+    mediaIndex: 53,
+    title: 'Gedhong Lopo-Lopo',
+    history: 'Gedhong Lopo-Lopo merupakan salah satu bagian bangunan di kawasan Taman Sari yang pada masa dahulu masih berdiri sebagai bagian dari kompleks taman kerajaan Kesultanan Yogyakarta. Namun, bangunan tersebut saat ini sudah tidak lagi utuh karena mengalami kerusakan akibat gempa bumi yang pernah melanda wilayah Yogyakarta. Dahulu bangunan ini digunakan sebagai tempat persinggahan dan peristirahatan sementara bagi Sri Sultan sebelum menuju ruang utama tempat beliau beristirahat bersama permaisuri.'
+  }
+};
+
+function getFeatureName(props){
+  return Object.values(props).find(Boolean) || 'Tamansari Yogyakarta';
+}
+
+function getTourTarget(name){
+  return tourTargets[name] || {
+    mediaIndex: 1,
+    title: String(name).replace(/_/g, ' '),
+    history: 'Objek ini merupakan bagian dari Situs Taman Sari Yogyakarta.'
+  };
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+
+function createPopup(e){
+  const props  = e.features[0].properties;
+  const nama   = getFeatureName(props);
+  const target = getTourTarget(nama);
+  const tourUrl    = `virtualtour.html?media-index=${target.mediaIndex}`;
+  const previewUrl = `../virtualtour/index.htm?media-index=${target.mediaIndex}&preview=1&clean=3`;
+
+  document.getElementById('miniTourFrame').src = previewUrl;
+  document.getElementById('miniTourLink').href = tourUrl;
+  document.getElementById('openTourLink').href = tourUrl;
+
+  document.getElementById('building-info').innerHTML = `
+    <h3>${escapeHtml(target.title)}</h3>
+    <p>${escapeHtml(target.history)}</p>
+    <a href="${tourUrl}" class="popup-btn">Lihat Panorama Ini</a>
+  `;
+
+  new mapboxgl.Popup({ maxWidth: '80vw', closeButton: true })
+    .setLngLat(e.lngLat)
+    .setHTML(`
+      <h3>${escapeHtml(target.title)}</h3>
+      <a class="popup-btn" href="${tourUrl}">Lihat Panorama Ini</a>
+    `)
+    .addTo(map);
+
+  /* Di mobile, beri tahu user buka panel kanan untuk lihat detail */
+  if(window.innerWidth <= 1023){
+    const badge = document.getElementById('fabBadge');
+    if(badge) badge.style.display = 'flex';
+    showToast('Info bangunan tersedia. Ketuk ikon 🏛️ kanan bawah untuk detail.', 2800);
+  }
+}
+
+map.on('click', 'bangunan-3d', createPopup);
+map.on('click', 'kolam', createPopup);
+
+map.on('mouseenter', 'bangunan-3d', () => map.getCanvas().style.cursor = 'pointer');
+map.on('mouseleave', 'bangunan-3d', () => map.getCanvas().style.cursor = '');
+map.on('mouseenter', 'kolam',        () => map.getCanvas().style.cursor = 'pointer');
+map.on('mouseleave', 'kolam',        () => map.getCanvas().style.cursor = '');
+
+/* ============================================================
+   PILIH TITIK AWAL  (mobile-friendly)
+   ============================================================ */
+const btnPickOrigin = document.getElementById('btnPickOrigin');
+const btnPickOriginText = document.getElementById('btnPickOriginText');
+
+btnPickOrigin.addEventListener('click', () => {
+  pickMode = !pickMode;
+  if(pickMode){
+    btnPickOrigin.classList.add('active');
+    btnPickOriginText.textContent = 'Ketuk peta untuk memilih...';
+    map.getCanvas().style.cursor = 'crosshair';
+    showToast('Ketuk lokasi mana saja di peta untuk titik awal.');
+    /* Di mobile, tutup drawer agar map terlihat */
+    if(window.innerWidth <= 1023) closeAllDrawers();
+  } else {
+    btnPickOrigin.classList.remove('active');
+    btnPickOriginText.textContent = 'Pilih Titik Awal di Peta';
+    map.getCanvas().style.cursor = '';
+  }
+});
+
+map.on('click', (e) => {
+  /* Hindari konflik klik bangunan */
+  const features = map.queryRenderedFeatures(e.point, { layers: ['bangunan-3d', 'kolam'] });
+  if(features.length > 0 && !pickMode) return;
+
+  if(pickMode){
+    pickMode = false;
+    btnPickOrigin.classList.remove('active');
+    btnPickOriginText.textContent = 'Pilih Titik Awal di Peta';
+    map.getCanvas().style.cursor = '';
+    routeFrom([e.lngLat.lng, e.lngLat.lat]);
+  }
+});
+
+map.on('dblclick', (e) => {
+  e.preventDefault && e.preventDefault();
+  routeFrom([e.lngLat.lng, e.lngLat.lat]);
+});
+
+/* ============================================================
+   BUILD ROUTE
+   ============================================================ */
+async function routeFrom(start){
+  const vehicleType = document.getElementById('vehicle').value;
+
+  if(originMarker)  originMarker.remove();
+  if(vehicleMarker) vehicleMarker.remove();
+
+  originMarker = new mapboxgl.Marker({ color: 'blue' })
+    .setLngLat(start)
+    .addTo(map);
+
+  const vehicleEl = document.createElement('div');
+  vehicleEl.className = 'vehicle-marker';
+  vehicleEl.innerHTML = vehicleType === 'cycling'
+    ? '<div class="vehicle-icon">🏍️</div>'
+    : '<div class="vehicle-icon">🚗</div>';
+
+  vehicleMarker = new mapboxgl.Marker(vehicleEl).setLngLat(start).addTo(map);
+
+  showToast('Mencari rute tercepat...');
+
+  try{
+    const url = `https://api.mapbox.com/directions/v5/mapbox/${vehicleType}/${start[0]},${start[1]};${tamanSari[0]},${tamanSari[1]}?alternatives=false&geometries=geojson&overview=full&steps=true&language=id&access_token=${mapboxgl.accessToken}`;
+    const res  = await fetch(url);
+    const json = await res.json();
+
+    if(!json.routes || json.routes.length === 0){
+      showToast('Rute tidak ditemukan. Coba titik lain.', 2600);
+      return;
+    }
+
+    const data  = json.routes[0];
+    const route = data.geometry;
+
+    const distance = (data.distance / 1000).toFixed(2);
+    const duration = (data.duration / 60).toFixed(0);
+    const kendaraanText = vehicleType === 'cycling' ? 'Motor / Roda 2' : 'Mobil / Roda 4';
+
+    /* ====== INFO RUTE ====== */
+    document.getElementById('routeInfo').innerHTML = `
+      <h3>Informasi Rute</h3>
+      <div class="row"><b>Kendaraan</b><span>${kendaraanText}</span></div>
+      <div class="row"><b>Jarak</b><span>${distance} km</span></div>
+      <div class="row"><b>Estimasi</b><span>${duration} menit</span></div>
+    `;
+
+    /* ====== STEPS ====== */
+    renderSteps(data.legs[0].steps);
+
+    /* ====== DRAW ROUTE ====== */
+    if(map.getSource('route')){
+      map.removeLayer('route');
+      map.removeSource('route');
+    }
+    map.addSource('route', {
+      type: 'geojson',
+      data: { type: 'Feature', properties: {}, geometry: route }
+    });
+    map.addLayer({
+      id: 'route',
+      type: 'line',
+      source: 'route',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: {
+        'line-color': '#ff0000',
+        'line-width': 6,
+        'line-opacity': 0.9,
+        'line-blur': 0.5
+      }
+    });
+
+    /* Fit map ke rute (otomatis zoom ke seluruh rute) */
+    const coordinates = route.coordinates;
+    const bounds = coordinates.reduce(
+      (b, c) => b.extend(c),
+      new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+    );
+    map.fitBounds(bounds, {
+      padding: window.innerWidth <= 768 ? 60 : 120,
+      duration: 800
+    });
+
+    /* Animasi vehicle */
+    let i = 0;
+    function animate(){
+      if(i < coordinates.length){
+        vehicleMarker.setLngLat(coordinates[i]);
+        i++;
+        requestAnimationFrame(animate);
+      }
+    }
+    animate();
+
+    showToast('Rute berhasil dibuat. Buka panel kiri untuk detail.', 2400);
+
+    /* Di mobile, otomatis buka panel kiri agar user lihat info rute */
+    if(window.innerWidth <= 1023){
+      setTimeout(() => toggleDrawer('left', true), 800);
+    }
+
+  } catch(err){
+    console.error(err);
+    showToast('Gagal mengambil rute. Periksa koneksi internet.', 3200);
+  }
+}
+
+/* ============================================================
+   STEPS RENDERING & TOGGLE
+   ============================================================ */
+const btnShowSteps = document.getElementById('btnShowSteps');
+const routeStepsEl = document.getElementById('routeSteps');
+
+btnShowSteps.addEventListener('click', () => {
+  const open = routeStepsEl.classList.toggle('open');
+  btnShowSteps.classList.toggle('open', open);
+  btnShowSteps.textContent = open ? 'Tutup Petunjuk' : 'Petunjuk Rute Tercepat';
+});
+
+function translateInstruction(instruction){
+  const replacements = [
+    [/Turn right onto/gi, 'Belok kanan ke'],
+    [/Turn left onto/gi, 'Belok kiri ke'],
+    [/Turn right/gi, 'Belok kanan'],
+    [/Turn left/gi, 'Belok kiri'],
+    [/Continue onto/gi, 'Lanjut ke'],
+    [/Continue on/gi, 'Lanjut di'],
+    [/Continue/gi, 'Lurus terus'],
+    [/Keep right/gi, 'Tetap di kanan'],
+    [/Keep left/gi, 'Tetap di kiri'],
+    [/Slight right/gi, 'Belok sedikit ke kanan'],
+    [/Slight left/gi, 'Belok sedikit ke kiri'],
+    [/Sharp right/gi, 'Belok tajam ke kanan'],
+    [/Sharp left/gi, 'Belok tajam ke kiri'],
+    [/U-turn/gi, 'Putar balik'],
+    [/Your destination is on the right/gi, 'Tujuan berada di kanan'],
+    [/Your destination is on the left/gi, 'Tujuan berada di kiri'],
+    [/Destination will be on the right/gi, 'Tujuan berada di kanan'],
+    [/Destination will be on the left/gi, 'Tujuan berada di kiri'],
+    [/You have arrived/gi, 'Anda telah tiba'],
+    [/Head/gi, 'Mulai perjalanan'],
+    [/Merge/gi, 'Masuk ke'],
+    [/Take the ramp/gi, 'Masuk jalur'],
+    [/At the roundabout/gi, 'Di bundaran'],
+    [/Exit the roundabout/gi, 'Keluar bundaran'],
+    [/\bDrive\b/g, 'Lewati'],
+    [/\bdrive\b/g, 'lewati'],
+    [/\btoward\b/gi, 'menuju'],
+    [/\btowards\b/gi, 'menuju'],
+    [/\bonto\b/gi, 'ke'],
+    [/\bto stay on\b/gi, 'tetap di'],
+    [/\bnorth\b/gi, 'utara'],
+    [/\bsouth\b/gi, 'selatan'],
+    [/\beast\b/gi, 'timur'],
+    [/\bwest\b/gi, 'barat'],
+    [/\bbicycle\b/gi, 'kendaraan']
+  ];
+  let out = String(instruction);
+  for(const [re, to] of replacements) out = out.replace(re, to);
+  return out;
+}
+
+function renderSteps(steps){
+  routeStepsEl.innerHTML = '';
+  routeStepsEl.classList.remove('open');
+  btnShowSteps.classList.remove('open');
+  btnShowSteps.textContent = 'Petunjuk Rute Tercepat';
+  btnShowSteps.style.display = 'block';
+
+  steps.forEach((step, idx) => {
+    const dist = (step.distance / 1000).toFixed(2);
+    const text = translateInstruction(step.maneuver.instruction || '');
+    const div = document.createElement('div');
+    div.className = 'route-step';
+    div.innerHTML = `
+      <b>${idx + 1}. ${escapeHtml(text)}</b>
+      <span class="dist">${dist} km</span>
+    `;
+    routeStepsEl.appendChild(div);
+  });
+}
+
+/* ============================================================
+   BASEMAP SWITCHER
+   ============================================================ */
+document.getElementById('basemap').addEventListener('change', function(){
+  const styleUrl = 'mapbox://styles/mapbox/' + this.value;
+  map.setStyle(styleUrl);
+  map.once('style.load', () => {
+    loadTamansariLayers();
+    /* Re-add route jika ada */
+    if(originMarker){
+      const cur = originMarker.getLngLat();
+      /* tidak auto re-route, biarkan user pilih ulang. cuma re-add titik */
+    }
+  });
+});
+
+/* ============================================================
+   SAFE iframe load timeout (jika preview lambat di mobile)
+   ============================================================ */
+(function(){
+  const f = document.getElementById('miniTourFrame');
+  if(!f) return;
+  let loaded = false;
+  f.addEventListener('load', () => loaded = true);
+  setTimeout(() => {
+    if(!loaded){
+      /* tidak menghapus, hanya log */
+      console.warn('Mini tour preview lambat dimuat.');
+    }
+  }, 8000);
+})();
+
+/* ============================================================
+   Tutup drawer dengan ESC (desktop)
+   ============================================================ */
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape') closeAllDrawers();
+});
+
+/* Reset badge ketika user buka panel kanan */
+document.getElementById('sidebarRight').addEventListener('transitionend', () => {
+  if(document.getElementById('sidebarRight').classList.contains('open')){
+    const b = document.getElementById('fabBadge');
+    if(b) b.style.display = 'none';
+  }
+});
+</script>
+
+</body>
+</html>

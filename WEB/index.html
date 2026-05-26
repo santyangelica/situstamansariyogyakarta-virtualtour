@@ -1,0 +1,106 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Virtual Tour 360° Situs Tamansari Yogyakarta</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <audio id="bgMusic" loop>
+    <source src="assets/audio/musik.mp3" type="audio/mpeg">
+  </audio>
+
+  <div id="audioPopup" class="audio-popup" aria-hidden="true">
+    <div class="audio-box" role="dialog" aria-modal="true" aria-labelledby="audioTitle">
+      <h2 id="audioTitle">Gunakan Audio?</h2>
+      <p>Aktifkan musik saat memasuki virtual tour.</p>
+      <div class="audio-buttons">
+        <button type="button" onclick="startTour(true)">Iya</button>
+        <button type="button" onclick="startTour(false)">Tidak</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="navbar">
+    <div class="logo">
+      <span class="logo-mark"><i class="fa-solid fa-landmark"></i></span>
+      <span>SITUS TAMANSARI YOGYAKARTA</span>
+    </div>
+    <a href="#hero">Beranda</a>
+    <a href="#info">Profil</a>
+    <a href="#kontak">Informasi</a>
+  </nav>
+
+  <section class="hero" id="hero">
+    <div class="overlay">
+      <h1>SITUS TAMANSARI YOGYAKARTA</h1>
+      <h2>VIRTUAL TOUR 360&deg;</h2>
+      <p>Jelajahi kawasan bersejarah Situs Tamansari Yogyakarta secara virtual dengan pengalaman interaktif 360&deg; dan peta interaktif.</p>
+      <div class="hero-buttons">
+        <div class="card-button">
+          <h3>Virtual Tour 360&deg;</h3>
+          <a href="#" onclick="openPopup(); return false;">Let's Go Explore!</a>
+        </div>
+        <div class="card-button">
+          <h3>Peta Interaktif</h3>
+          <a href="pages/map.html">Navigation Zone!</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="profil-section reveal" id="info">
+    <h2>Profil Situs Tamansari Yogyakarta</h2>
+    <div class="profil-cards">
+      <div class="profil-card">
+        <i class="fa-solid fa-landmark"></i>
+        <h3>Jejak Singkat Situs Tamansari Yogyakarta</h3>
+        <p>Situs Tamansari Yogyakarta merupakan salah satu situs bersejarah peninggalan Kesultanan Yogyakarta yang dibangun pada masa pemerintahan Sri Sultan Hamengku Buwono I sekitar tahun 1758-1765. Kompleks ini awalnya difungsikan sebagai taman kerajaan, tempat peristirahatan, meditasi, sekaligus benteng pertahanan bagi keluarga keraton. Tamansari memiliki arsitektur yang unik karena memadukan gaya Jawa dengan sentuhan Eropa dan Portugis, terlihat dari bangunan kolam pemandian dan struktur bangunan yang artistik. Dahulu kawasan ini dikelilingi danau buatan yang menjadikannya dikenal sebagai Istana Air. Hingga kini, Tamansari menjadi salah satu destinasi wisata budaya dan sejarah paling ikonik di Yogyakarta yang menyimpan nilai filosofi, keindahan arsitektur, serta jejak kejayaan Keraton Yogyakarta.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact-section reveal" id="kontak">
+    <h2>Informasi Wisata</h2>
+    <div class="contact-container">
+      <div class="contact-card">
+        
+        <button id="jamBtn" class="info-btn" type="button"><i class="fa-solid fa-clock"></i>Jam Operasional</button>
+        <button id="ticketBtn" class="info-btn" type="button"><i class="fa-solid fa-ticket"></i>Harga Tiket</button>
+        <a href="https://wa.me/6281911376756" target="_blank" class="info-btn link-btn"><i class="fa-brands fa-whatsapp"></i>WhatsApp</a>
+        <a href="https://www.instagram.com/wisatatamansariyogyakarta" target="_blank" class="info-btn link-btn"><i class="fa-brands fa-instagram"></i>Instagram</a>
+      </div>
+      <a href="https://maps.google.com/?q=Taman+Sari+Yogyakarta" target="_blank" class="maps-card">
+        <iframe src="https://www.google.com/maps?q=Taman+Sari+Yogyakarta&output=embed" allowfullscreen="" loading="lazy"></iframe>
+      </a>
+    </div>
+  </section>
+
+  <div id="locationModal" class="popup-modal">
+    <div class="popup-content"><span class="close-location">&times;</span><h2>Lokasi Taman Sari</h2><div class="popup-box"><p>Patehan, Kecamatan Kraton, Kota Yogyakarta, Daerah Istimewa Yogyakarta 55133</p></div></div>
+  </div>
+  <div id="jamModal" class="popup-modal">
+    <div class="popup-content"><span class="close-jam">&times;</span><h2>Jam Operasional</h2><div class="popup-box"><p>Senin - Minggu</p><p>09.00 - 15.00 WIB</p></div></div>
+  </div>
+  <div id="ticketModal" class="popup-modal">
+    <div class="popup-content"><span class="close-ticket">&times;</span><h2>Harga Tiket</h2><div class="popup-box"><h3>Domestik</h3><p>Anak-anak : Rp 10.000</p><p>Dewasa : Rp 15.000</p></div><div class="popup-box"><h3>Mancanegara</h3><p>Anak-anak : Rp 20.000</p><p>Dewasa : Rp 25.000</p></div></div>
+  </div>
+
+  <section class="profile reveal">
+    <div class="profile-card">
+      <img src="assets/images/enjel.jpeg" alt="Profile Pembuat">
+      <h3>Santy Angelica</h3>
+      <p>Website Virtual Tour 360deg dan Peta Interaktif Situs Tamansari Yogyakarta</p>
+      <div class="profile-links">
+        <a href="mailto:117220014@student.upnyk.ac.id"><i class="fa-solid fa-envelope"></i>117220014@student.upnyk.ac.id</a>
+      </div>
+      <small>&copy; 2026 Virtual Tour 360° Situs Tamansari Yogyakarta. All rights reserved.</small>
+    </div>
+  </section>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>
