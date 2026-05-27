@@ -1179,6 +1179,40 @@ list-style-position:inside;
   text-align: center;
   color: white;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+.audio-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+}
+
+.audio-close:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+.audio-close:active {
+  transform: scale(0.92);
+}
+
+.audio-close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
 }
 
 .audio-box h2,

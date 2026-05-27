@@ -408,13 +408,22 @@ loadTour()
         /* ============================================================
            DESKTOP -- CENTERING PANEL KONTROL BAWAH
            ============================================================
-           Centering dilakukan via JS (centerDesktopPanel) yang
-           mengukur lebar viewer + panel secara akurat. CSS hanya
-           memastikan TIDAK ada right offset yang membuat off-center.
+           Di desktop (>768px), panel di-center via CSS dengan
+           `left: 50%` + `transform: translateX(-50%)`. CSS `!important`
+           menang atas inline TDV, dan JS enforcer (lihat di akhir
+           file) re-apply jika TDV menulis ulang inline style.
+
+           Di mobile (<=768px), panel kontrol diatur via TDV Player API
+           (lihat applyMobileOverrides di JS) -- TDV menulis width +
+           left baru ke container, lalu otomatis re-distribute children
+           (tombol-tombol) agar terdistribusi rata di lebar baru.
            ============================================================ */
         @media (min-width: 769px) {
             #Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95 {
                 right: auto !important;
+                left: 50% !important;
+                transform: translateX(-50%) !important;
+                transform-origin: bottom center !important;
             }
         }
 
@@ -546,19 +555,9 @@ loadTour()
                 box-shadow: 0 2px 8px rgba(0,0,0,0.25) !important;
             }
 
-            /* Panel kontrol bawah -- positioning diatur via TDV API
-               (lihat applyMobileOverrides di JS), bukan via CSS,
-               karena player perlu hitung ulang layout children
-               position-absolute saat width berubah. */
-
-            /* Icon button di dalam panel kontrol -- pertahankan ukuran yg cukup
-               untuk disentuh dengan jari */
-            #Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95 [id^="IconButton_"] {
-                min-width: 38px !important;
-                min-height: 38px !important;
-                width: 38px !important;
-                height: 38px !important;
-            }
+            /* Panel kontrol bawah -- positioning & scaling diatur via CSS
+               di blok @media di awal <style>. Tidak ada override ukuran
+               IconButton di sini agar layout TDV tidak rusak. */
 
             #audioUnlock {
                 right: 12px;
@@ -583,13 +582,6 @@ loadTour()
                 max-height: 75vh !important;
             }
 
-            #Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95 [id^="IconButton_"] {
-                min-width: 34px !important;
-                min-height: 34px !important;
-                width: 34px !important;
-                height: 34px !important;
-            }
-
             #audioUnlock {
                 right: 10px;
                 top: 10px;
@@ -603,13 +595,6 @@ loadTour()
             #Image_45E0EBBC_4BCC_8DAB_41D1_1835FA1540D4 {
                 width: 38vw !important;
                 max-width: 120px !important;
-            }
-
-            #Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95 [id^="IconButton_"] {
-                min-width: 30px !important;
-                min-height: 30px !important;
-                width: 30px !important;
-                height: 30px !important;
             }
         }
 
@@ -810,7 +795,11 @@ loadTour()
             function isSmall(){ return window.innerWidth <= 420; }
 
             /* Komponen yang perlu disesuaikan ukurannya di mobile.
-               Setiap entry: [id, propertyOverrides] */
+               Setiap entry: [id, propertyOverrides]
+               
+               Pendekatan: pakai TDV Player API untuk set width + left.
+               Player akan otomatis re-distribute children (tombol-tombol
+               di dalam panel) agar terdistribusi rata di lebar baru. */
             function getMobileOverrides(){
                 var w = window.innerWidth;
                 if(w > 768) return null;
@@ -819,7 +808,7 @@ loadTour()
 
                 return [
                     {
-                        /* Panel kontrol bawah -- override width-nya supaya
+                        /* Panel kontrol bawah -- override width supaya
                            player TDV menghitung ulang posisi children agar
                            terdistribusi rata di lebar baru. */
                         id: 'Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95',
@@ -831,60 +820,21 @@ loadTour()
                             top:    null
                         }
                     }
-                    /* Note: Denah bawaan TDV tetap pakai default agar
-                       muncul di mobile (versi sebelumnya). */
                 ];
             }
 
-            /* Original values dari script.js -- untuk reset saat dari mobile -> desktop */
+            /* Original values dari script.js -- untuk reset saat dari mobile -> desktop.
+               Di desktop, kita pakai CSS saja untuk centering (left:50% + translateX). */
             var DESKTOP_DEFAULTS = {
                 'Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95': {
                     width:  361.9,
                     height: 121.65,
-                    right:  null,    /* hilangkan right, akan pakai left untuk centering */
-                    left:   null,    /* akan dihitung dinamis di centerDesktopPanel() */
+                    right:  null,    /* CSS yg handle centering */
+                    left:   null,    /* biarkan CSS pakai 50% */
                     bottom: '4.2%',
                     top:    null
                 }
             };
-
-            /* Centering dinamis untuk panel kontrol di desktop.
-               Player TDV pakai right:35.43% yang membuat off-center.
-               Solusi: ukur viewer width + panel width, set left = (viewerW - panelW)/2 */
-            function centerDesktopPanel(){
-                if(window.innerWidth <= 768) return;
-                var viewer = document.getElementById('viewer');
-                var panel  = document.getElementById('Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95');
-                if(!viewer || !panel) return;
-
-                var viewerW = viewer.clientWidth;
-                /* Panel width default 361.9 dari script.js */
-                var panelW = 361.9;
-                try {
-                    if(window.tdvplayer && window.tdvplayer.getById){
-                        var comp = window.tdvplayer.getById('Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95');
-                        if(comp && comp.get) panelW = parseFloat(comp.get('width')) || 361.9;
-                    }
-                } catch(e){}
-
-                var leftPx = Math.round((viewerW - panelW) / 2);
-
-                /* Apply via TDV API (player akan persisten ini) */
-                try {
-                    if(window.tdvplayer && window.tdvplayer.getById){
-                        var comp = window.tdvplayer.getById('Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95');
-                        if(comp && comp.set){
-                            comp.set('right', null);
-                            comp.set('left',  leftPx);
-                        }
-                    }
-                } catch(e){}
-
-                /* Apply via DOM inline style sebagai backup */
-                panel.style.setProperty('left',  leftPx + 'px', 'important');
-                panel.style.setProperty('right', 'auto', 'important');
-                panel.style.removeProperty('transform'); /* hilangkan transform jika ada */
-            }
 
             function applyDesktopDefaults(){
                 if(!window.tdvplayer || !window.tdvplayer.getById) return;
@@ -899,22 +849,25 @@ loadTour()
                     } catch(e){}
                 });
 
-                /* Pastikan denah TDV visible lagi di desktop */
-                ['MapViewer', 'Image_45E0EBBC_4BCC_8DAB_41D1_1835FA1540D4'].forEach(function(id){
-                    try {
-                        var comp = window.tdvplayer.getById(id);
-                        if(!comp || !comp.set) return;
-                        if(id === 'MapViewer'){
-                            /* MapViewer awalnya visible: false dari script.js
-                               (toggle by user click), jangan paksa visible */
-                        } else {
-                            comp.set('visible', true);
-                        }
-                    } catch(e){}
-                });
+                /* PENTING: TDV API `comp.set('left', null)` tidak selalu
+                   menghapus inline `style.left` di DOM. Saat transisi
+                   mobile->desktop, inline `left: <px>` peninggalan mobile
+                   masih ada -> panel terlihat di kiri-bawah meskipun CSS
+                   @media punya `left:50% !important`.
+                   Solusi: hapus langsung inline left/right/transform agar
+                   CSS @media take over. */
+                var panel = document.getElementById('Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95');
+                if(panel){
+                    panel.style.removeProperty('left');
+                    panel.style.removeProperty('right');
+                    panel.style.removeProperty('transform');
+                }
 
-                /* Center panel kontrol di desktop dengan akurat */
-                centerDesktopPanel();
+                /* Pastikan tombol toggle denah visible (di kiri-atas) */
+                try {
+                    var btn = window.tdvplayer.getById('Image_45E0EBBC_4BCC_8DAB_41D1_1835FA1540D4');
+                    if(btn && btn.set) btn.set('visible', true);
+                } catch(e){}
             }
 
             function applyMobileOverrides(){
@@ -925,6 +878,18 @@ loadTour()
                        setelah pernah ke mobile */
                     applyDesktopDefaults();
                     return true;
+                }
+
+                /* Bersihkan inline style yg mungkin ditulis enforcer desktop
+                   (left:50%, transform:translateX(-50%) dengan !important).
+                   Jika tidak dibersihkan, mobile TDV API set('left', px) tetap
+                   kalah karena inline desktop punya !important. */
+                var panel = document.getElementById('Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95');
+                if(panel){
+                    panel.style.removeProperty('left');
+                    panel.style.removeProperty('right');
+                    panel.style.removeProperty('transform');
+                    panel.style.removeProperty('transform-origin');
                 }
 
                 var anyApplied = false;
@@ -1500,6 +1465,268 @@ loadTour()
            CUSTOM DENAH OVERLAY (CARA B) -- TOGGLE
            Removed: kembali ke denah bawaan TDV.
            ============================================================ */
+    </script>
+
+    <script>
+        /* ============================================================
+           CENTERING ENFORCER UNTUK PANEL KONTROL BAWAH (DESKTOP)
+           ============================================================
+           Di desktop kita tidak set width JS-side. Centering via CSS
+           media query (left:50% + transform:translateX(-50%)). JS
+           enforcer ini memastikan inline style mobile (left/right/
+           transform yg ditulis TDV API saat mobile pass) dibersihkan
+           saat user resize ke desktop, sehingga CSS take over.
+
+           Di mobile (<=768px) kita TIDAK menyentuh inline style sini --
+           biarkan applyMobileOverrides yang handle.
+           ============================================================ */
+        (function(){
+            var PANEL_ID = 'Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95';
+
+            function isDesktop(){ return window.innerWidth > 768; }
+
+            /* Hapus inline style positioning supaya CSS @media take over.
+               Dipanggil saat di desktop. */
+            function cleanInlineForDesktop(){
+                if(!isDesktop()) return;
+                var panel = document.getElementById(PANEL_ID);
+                if(!panel) return;
+                /* Bersihkan dulu sisa mobile */
+                panel.style.removeProperty('left');
+                panel.style.removeProperty('right');
+                panel.style.removeProperty('transform');
+                /* Lalu set ulang dengan !important agar tahan terhadap
+                   inline write berikutnya dari TDV. */
+                panel.style.setProperty('right', 'auto', 'important');
+                panel.style.setProperty('left', '50%', 'important');
+                panel.style.setProperty('transform', 'translateX(-50%)', 'important');
+                panel.style.setProperty('transform-origin', 'bottom center', 'important');
+            }
+
+            function startEnforce(){
+                cleanInlineForDesktop();
+                var n = 0;
+                var t = setInterval(function(){
+                    cleanInlineForDesktop();
+                    if(++n > 12) clearInterval(t);
+                }, 250);
+            }
+
+            window.addEventListener('tourLoaded', startEnforce);
+            window.addEventListener('message', function(e){
+                if(e && e.data === 'tourLoaded') startEnforce();
+            });
+            setTimeout(startEnforce, 1500);
+            setTimeout(startEnforce, 4000);
+
+            /* Resize: deteksi transisi mobile<->desktop */
+            var lastIsDesktop = isDesktop();
+            var debounce;
+            window.addEventListener('resize', function(){
+                clearTimeout(debounce);
+                debounce = setTimeout(function(){
+                    var nowDesktop = isDesktop();
+                    if(nowDesktop && !lastIsDesktop){
+                        /* Baru saja transisi mobile -> desktop. Beberapa
+                           retry karena TDV juga melakukan re-layout sendiri. */
+                        cleanInlineForDesktop();
+                        setTimeout(cleanInlineForDesktop, 100);
+                        setTimeout(cleanInlineForDesktop, 400);
+                        setTimeout(cleanInlineForDesktop, 900);
+                    } else if(nowDesktop){
+                        cleanInlineForDesktop();
+                    }
+                    lastIsDesktop = nowDesktop;
+                }, 80);
+            });
+            window.addEventListener('orientationchange', function(){
+                setTimeout(function(){
+                    if(isDesktop()) cleanInlineForDesktop();
+                }, 200);
+            });
+
+            /* Observer: setiap kali TDV menulis ulang inline style
+               saat di desktop, bersihkan & re-apply centering. */
+            function attachObserver(){
+                var panel = document.getElementById(PANEL_ID);
+                if(!panel || panel.__deskCenterObserved) return false;
+                try {
+                    var obs = new MutationObserver(function(){
+                        if(!isDesktop()) return;
+                        /* Hindari loop tak berhingga: cek apakah style sudah benar */
+                        if(panel.style.left !== '50%' || panel.style.transform.indexOf('translateX(-50%)') === -1){
+                            cleanInlineForDesktop();
+                        }
+                    });
+                    obs.observe(panel, { attributes: true, attributeFilter: ['style'] });
+                    panel.__deskCenterObserved = true;
+                    return true;
+                } catch(e){ return false; }
+            }
+            (function tryObserve(){
+                if(attachObserver()) return;
+                setTimeout(tryObserve, 600);
+            })();
+        })();
+    </script>
+
+    <script>
+        /* ============================================================
+           DISABLE AUTO-ROTATE / AUTO PLAY (CAMERA MOVEMENT)
+           ============================================================
+           Penyebab kamera bergerak otomatis & tombol play/fast-forward
+           tampak "tertekan":
+
+           - PanoramaPlayer berada di state 'playing'. Saat playing,
+             player TDV menjalankan camera sequence (initialSequence /
+             idleSequence) sehingga panorama berputar otomatis dan
+             panel tombol menampilkan tombol Play & Fast-Forward dalam
+             keadaan pressed (merah).
+
+           Solusi resmi TDV: panggil `pauseCamera()` pada setiap
+           PanoramaPlayer. State berubah ke 'paused' -> sequence
+           berhenti, tombol play/fast-forward kembali normal.
+
+           Strategi:
+           1. Saat tour load, panggil `pauseCamera()` pada semua
+              PanoramaPlayer.
+           2. Bind ke `stateChange` event setiap player. Jika player
+              masuk state 'playing' karena event apapun (auto-resume,
+              hotspot click yg auto-play, dsb.) langsung pause kembali.
+           3. `timeToIdle` di-set besar -> idleSequence tidak pernah
+              dipicu (auto-rotate setelah idle).
+           4. Re-apply pada perubahan playlist & event 'begin' tiap
+              PanoramaPlayListItem.
+           ============================================================ */
+        (function(){
+            var INFINITE_IDLE = 1e12;
+
+            function setInfiniteIdle(){
+                if(!window.tdvplayer || !window.tdvplayer.getByClassName) return;
+                try {
+                    var cameras = window.tdvplayer.getByClassName('PanoramaCamera') || [];
+                    cameras.forEach(function(cam){
+                        try { cam.set('timeToIdle', INFINITE_IDLE); } catch(e){}
+                    });
+                } catch(e){}
+            }
+
+            function pauseAllPanoramaPlayers(){
+                if(!window.tdvplayer || !window.tdvplayer.getByClassName) return;
+                try {
+                    var players = window.tdvplayer.getByClassName('PanoramaPlayer') || [];
+                    players.forEach(function(p){
+                        try {
+                            if(typeof p.pauseCamera === 'function'){
+                                p.pauseCamera();
+                            }
+                        } catch(e){}
+                    });
+                } catch(e){}
+            }
+
+            /* Lock-back: tiap kali player coba kembali ke state 'playing',
+               langsung pause lagi. Ini memastikan tidak ada kondisi di mana
+               TDV otomatis resume camera sequence. */
+            function bindPlayerStateChange(){
+                if(!window.tdvplayer || !window.tdvplayer.getByClassName) return false;
+                var bound = 0;
+                try {
+                    var players = window.tdvplayer.getByClassName('PanoramaPlayer') || [];
+                    players.forEach(function(p){
+                        if(p.__noAutoRotateBound) return;
+                        try {
+                            p.bind('stateChange', function(){
+                                try {
+                                    if(p.get && p.get('state') === 'playing'){
+                                        if(typeof p.pauseCamera === 'function'){
+                                            p.pauseCamera();
+                                        }
+                                    }
+                                } catch(e){}
+                            }, p);
+                            p.__noAutoRotateBound = true;
+                            bound++;
+                        } catch(e){}
+                    });
+                } catch(e){}
+                return bound > 0;
+            }
+
+            function applyDisable(){
+                setInfiniteIdle();
+                pauseAllPanoramaPlayers();
+                bindPlayerStateChange();
+            }
+
+            /* Initial apply setelah tour load */
+            window.addEventListener('tourLoaded', function(){
+                setTimeout(applyDisable, 100);
+                /* Beberapa retry karena initialSequence biasanya mulai
+                   100-500ms setelah panorama begin */
+                setTimeout(pauseAllPanoramaPlayers, 400);
+                setTimeout(pauseAllPanoramaPlayers, 900);
+                setTimeout(pauseAllPanoramaPlayers, 1800);
+            });
+            window.addEventListener('message', function(e){
+                if(e && e.data === 'tourLoaded'){
+                    setTimeout(applyDisable, 100);
+                    setTimeout(pauseAllPanoramaPlayers, 400);
+                    setTimeout(pauseAllPanoramaPlayers, 900);
+                    setTimeout(pauseAllPanoramaPlayers, 1800);
+                }
+            });
+            /* Fallback bila event tourLoaded tidak terbit */
+            setTimeout(applyDisable, 2500);
+            setTimeout(applyDisable, 5000);
+
+            /* Re-apply tiap kali user pindah panorama */
+            function bindPlaylistChange(){
+                if(!window.tdvplayer || !window.tdvplayer.getById) return false;
+                var mainPL = window.tdvplayer.getById('mainPlayList');
+                if(!mainPL || mainPL.__autoRotateBound) return false;
+                try {
+                    mainPL.bind('change', function(){
+                        setInfiniteIdle();
+                        bindPlayerStateChange();
+                        /* Beberapa retry */
+                        setTimeout(pauseAllPanoramaPlayers, 80);
+                        setTimeout(pauseAllPanoramaPlayers, 350);
+                        setTimeout(pauseAllPanoramaPlayers, 900);
+                        setTimeout(pauseAllPanoramaPlayers, 1800);
+                    });
+                    mainPL.__autoRotateBound = true;
+                    return true;
+                } catch(e){ return false; }
+            }
+            (function tryBind(){
+                if(bindPlaylistChange()) return;
+                setTimeout(tryBind, 600);
+            })();
+
+            /* Bind 'begin' ke setiap PanoramaPlayListItem -- lebih reliable
+               ketimbang playlist 'change' karena 'begin' dipanggil tepat
+               saat panorama mulai render. */
+            function bindAllBegins(){
+                if(!window.tdvplayer || !window.tdvplayer.bindOnObjectsOf) return false;
+                if(window.__beginBoundForAutoRotate) return true;
+                try {
+                    window.tdvplayer.bindOnObjectsOf('PanoramaPlayListItem', 'begin', function(){
+                        setInfiniteIdle();
+                        bindPlayerStateChange();
+                        setTimeout(pauseAllPanoramaPlayers, 60);
+                        setTimeout(pauseAllPanoramaPlayers, 300);
+                        setTimeout(pauseAllPanoramaPlayers, 800);
+                    }, window.tdvplayer);
+                    window.__beginBoundForAutoRotate = true;
+                    return true;
+                } catch(e){ return false; }
+            }
+            (function tryBindBegins(){
+                if(bindAllBegins()) return;
+                setTimeout(tryBindBegins, 600);
+            })();
+        })();
     </script>
 
 </body>

@@ -139,82 +139,298 @@ body{
   50%   { box-shadow:0 0 0 10px rgba(193,18,31,0); }
 }
 
-/* PANEL INFO RUTE */
-.route-info{
-  margin-top:18px;
-  background:#f8f3ef;
-  color:#1f2937;
-  padding:16px 18px;
-  border-radius:14px;
-  line-height:1.65;
-  box-shadow:0 8px 22px rgba(0,0,0,0.14);
-  font-size:14px;
+/* =========================================================
+   ROUTE OVERLAY  (floating panel di atas map)
+   =========================================================
+   Posisi: top-left map, glass/transparent, scrollable,
+   tidak menutupi map controls (top-right) dan tetap
+   responsif di desktop & mobile.
+*/
+.route-overlay{
+  position:absolute;
+  top:14px;
+  left:14px;
+  width:min(340px, calc(100% - 28px));
+  max-height:calc(100% - 28px);
+  background:rgba(255,255,255,.92);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.6);
+  border-radius:16px;
+  box-shadow:0 12px 36px rgba(15,23,42,.18);
+  z-index:30;
+  display:none;
+  flex-direction:column;
+  overflow:hidden;
+  font-family:'Poppins','Segoe UI',Arial,sans-serif;
+  animation:overlayIn .3s ease;
 }
 
-.route-info h3{
-  font-size:17px;
-  color:#9b6b43;
-  margin-bottom:10px;
+.route-overlay.show{ display:flex; }
+
+@keyframes overlayIn{
+  from{ opacity:0; transform:translateY(-8px); }
+  to  { opacity:1; transform:translateY(0); }
 }
 
-.route-info .empty{
-  color:#6b7280;
-  font-style:italic;
-}
-
-.route-info .row{
+.route-overlay__header{
   display:flex;
+  align-items:center;
   justify-content:space-between;
-  padding:6px 0;
-  border-bottom:1px dashed #e5d6c6;
+  gap:10px;
+  padding:12px 14px;
+  background:linear-gradient(135deg, rgba(155,107,67,.96), rgba(125,85,58,.96));
+  color:#fff;
+  border-radius:16px 16px 0 0;
 }
 
-.route-info .row:last-child{ border-bottom:none; }
-
-.route-info .row b{ color:#9b6b43; }
-
-/* TOMBOL TUNJUK PETUNJUK */
-.btn-show-route{
-  width:100%;
-  padding:12px;
-  border:none;
-  border-radius:12px;
-  background:#c1121f;
-  color:#fff;
+.route-overlay__title{
   font-size:14px;
   font-weight:700;
+  letter-spacing:.4px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  line-height:1.2;
+}
+
+.route-overlay__title svg{
+  width:18px;
+  height:18px;
+  flex-shrink:0;
+}
+
+.route-overlay__close{
+  width:30px;
+  height:30px;
+  border:none;
+  border-radius:50%;
+  background:rgba(255,255,255,.18);
+  color:#fff;
+  font-size:18px;
+  font-weight:700;
+  line-height:1;
   cursor:pointer;
-  margin-top:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:.2s;
+  flex-shrink:0;
+}
+
+.route-overlay__close:hover{ background:rgba(255,255,255,.32); }
+.route-overlay__close:active{ transform:scale(.92); }
+
+.route-overlay__body{
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:14px;
+  color:#1f2937;
+  font-size:13.5px;
+  line-height:1.6;
+  flex:1;
+  min-height:0;
+}
+
+.route-overlay__body::-webkit-scrollbar{ width:6px; }
+.route-overlay__body::-webkit-scrollbar-thumb{ background:rgba(155,107,67,.4); border-radius:99px; }
+.route-overlay__body::-webkit-scrollbar-track{ background:transparent; }
+
+.route-summary{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:12px;
+}
+
+.route-summary .stat{
+  background:rgba(155,107,67,.08);
+  border-radius:10px;
+  padding:8px 10px;
+  text-align:center;
+}
+
+.route-summary .stat .label{
+  display:block;
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.6px;
+  color:#9b6b43;
+  font-weight:700;
+  margin-bottom:2px;
+}
+
+.route-summary .stat .value{
+  display:block;
+  font-size:14px;
+  font-weight:700;
+  color:#1f2937;
+}
+
+.route-empty{
+  text-align:center;
+  color:#6b7280;
+  font-size:13px;
+  padding:8px 4px;
+}
+
+.route-empty .icon{
+  display:block;
+  font-size:26px;
+  margin-bottom:6px;
+  opacity:.5;
+}
+
+.route-steps-title{
+  font-size:12px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.5px;
+  color:#9b6b43;
+  margin:6px 0 8px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+
+.route-steps-title::before{
+  content:"";
+  flex:1;
+  height:1px;
+  background:linear-gradient(to right, rgba(155,107,67,.35), transparent);
+  margin-right:6px;
+}
+
+.route-step{
+  display:flex;
+  gap:10px;
+  background:#fff;
+  border:1px solid rgba(155,107,67,.14);
+  border-left:3px solid #9b6b43;
+  padding:9px 11px;
+  border-radius:10px;
+  margin-bottom:7px;
+  font-size:12.8px;
+  line-height:1.5;
+  color:#1f2937;
+}
+
+.route-step .num{
+  flex-shrink:0;
+  width:22px;
+  height:22px;
+  background:#9b6b43;
+  color:#fff;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+  font-size:11.5px;
+}
+
+.route-step .text{ flex:1; }
+
+.route-step .dist{
+  display:inline-block;
+  margin-top:3px;
+  font-size:11px;
+  color:#6b7280;
+  background:rgba(0,0,0,.04);
+  padding:2px 7px;
+  border-radius:99px;
+}
+
+/* Tombol "Buka petunjuk" floating saat overlay ditutup */
+.route-reopen{
+  position:absolute;
+  top:14px;
+  left:14px;
+  display:none;
+  align-items:center;
+  gap:8px;
+  padding:10px 14px;
+  border:none;
+  border-radius:99px;
+  background:rgba(155,107,67,.96);
+  color:#fff;
+  font-family:'Poppins','Segoe UI',Arial,sans-serif;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  z-index:29;
+  box-shadow:0 8px 22px rgba(15,23,42,.2);
   transition:.2s;
 }
 
-.btn-show-route.open{ background:#374151; }
+.route-reopen:hover{ background:#7d553a; }
+.route-reopen.show{ display:inline-flex; }
+.route-reopen svg{ width:16px; height:16px; }
 
-.route-steps{
-  display:none;
-  margin-top:12px;
-}
-
-.route-steps.open{ display:block; }
-
-.route-step{
+/* =========================================================
+   TOMBOL "LOKASI SAYA" CUSTOM (di pojok kanan map)
+   ========================================================= */
+.locate-fab{
+  position:absolute;
+  right:10px;
+  bottom:42px;
+  z-index:25;
+  width:44px;
+  height:44px;
+  border:none;
+  border-radius:50%;
   background:#fff;
-  border-left:3px solid #9b6b43;
-  padding:10px 12px;
-  border-radius:8px;
-  margin-bottom:8px;
-  font-size:13px;
-  line-height:1.6;
-  color:#1f2937;
+  color:#9b6b43;
+  font-size:20px;
+  cursor:pointer;
+  box-shadow:0 4px 12px rgba(15,23,42,.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:.2s;
 }
 
-.route-step b{ color:#9b6b43; }
+.locate-fab:hover{ background:#fff7ef; color:#7d553a; }
+.locate-fab:active{ transform:scale(.94); }
+.locate-fab.loading{ animation:locateSpin 1s linear infinite; }
+.locate-fab.loading svg{ opacity:.6; }
 
-.route-step .dist{
-  display:block;
-  margin-top:4px;
-  font-size:12px;
-  color:#6b7280;
+@keyframes locateSpin{
+  from{ transform:rotate(0deg); }
+  to  { transform:rotate(360deg); }
+}
+
+.locate-fab svg{ width:22px; height:22px; }
+
+/* User location marker (pulsing dot) */
+.user-location-marker{
+  position:relative;
+  width:18px;
+  height:18px;
+}
+
+.user-location-marker .dot{
+  position:absolute;
+  inset:0;
+  background:#1d4ed8;
+  border:3px solid #fff;
+  border-radius:50%;
+  box-shadow:0 2px 6px rgba(0,0,0,.35);
+  z-index:2;
+}
+
+.user-location-marker .pulse{
+  position:absolute;
+  inset:-8px;
+  border-radius:50%;
+  background:rgba(29,78,216,.35);
+  animation:userPulse 1.6s ease-out infinite;
+  z-index:1;
+}
+
+@keyframes userPulse{
+  0%  { transform:scale(.6); opacity:.9; }
+  100%{ transform:scale(1.6); opacity:0; }
 }
 
 /* =========================================================
@@ -388,12 +604,56 @@ body{
   padding:14px 16px;
   font-family:Arial,sans-serif;
   max-width:78vw;
+  /* Beri ruang di kanan agar tombol close (×) tidak menimpa
+     judul popup, terutama untuk judul pendek seperti
+     "Umbul Muncar", "Umbul Binangun", "Umbul Kuras". */
+  padding-right:42px;
+  position:relative;
 }
 
 .mapboxgl-popup-content h3{
   font-size:16px;
   color:#9b6b43;
   margin-bottom:10px;
+  padding-right:0;
+  line-height:1.3;
+}
+
+/* Tombol close (×) bawaan Mapbox -- override jadi bulat,
+   kontras, dan pas di pojok kanan-atas tanpa menimpa konten. */
+.mapboxgl-popup-content .mapboxgl-popup-close-button{
+  position:absolute;
+  top:8px;
+  right:8px;
+  width:26px;
+  height:26px;
+  padding:0;
+  border:none;
+  border-radius:50%;
+  background:rgba(155,107,67,.12);
+  color:#9b6b43;
+  font-size:20px;
+  font-weight:700;
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transition:background .2s, transform .2s, color .2s;
+}
+
+.mapboxgl-popup-content .mapboxgl-popup-close-button:hover{
+  background:#9b6b43;
+  color:#fff;
+}
+
+.mapboxgl-popup-content .mapboxgl-popup-close-button:active{
+  transform:scale(.92);
+}
+
+.mapboxgl-popup-content .mapboxgl-popup-close-button:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(155,107,67,.35);
 }
 
 .popup-btn{
@@ -601,6 +861,35 @@ body{
     padding-bottom:max(40px, env(safe-area-inset-bottom));
   }
 
+  /* Route overlay -- konstrain lebar agar tidak menutupi
+     mapbox controls (top-right). Pakai minimal 250px atau 60vw. */
+  .route-overlay{
+    top:10px;
+    left:10px;
+    width:min(320px, 64vw);
+    max-height:60vh;
+    border-radius:14px;
+  }
+  .route-overlay__header{ padding:11px 13px; border-radius:14px 14px 0 0; }
+  .route-overlay__title{ font-size:13.5px; }
+  .route-overlay__body{ padding:12px; font-size:13px; }
+  .route-summary .stat .value{ font-size:13px; }
+  .route-summary .stat .label{ font-size:10px; }
+
+  .route-reopen{
+    top:10px;
+    left:10px;
+    padding:9px 13px;
+    font-size:12.5px;
+  }
+
+  .locate-fab{
+    width:42px;
+    height:42px;
+    bottom:calc(env(safe-area-inset-bottom) + 76px);
+  }
+  .locate-fab svg{ width:20px; height:20px; }
+
   .sidebar-left h1{ font-size:22px; margin-bottom:14px; }
   .sidebar-left h2{ font-size:16px; margin-top:16px; }
   .sidebar-left .desc-list li{ font-size:13.5px; }
@@ -615,8 +904,16 @@ body{
     max-width:80vw;
     font-size:14px;
     padding:12px 14px;
+    padding-right:40px;
   }
   .mapboxgl-popup-content h3{ font-size:15px; }
+  .mapboxgl-popup-content .mapboxgl-popup-close-button{
+    top:6px;
+    right:6px;
+    width:24px;
+    height:24px;
+    font-size:18px;
+  }
 
   .vehicle-icon{ width:38px; height:38px; font-size:20px; }
 
@@ -640,6 +937,10 @@ body{
 
   .fab-group{ right:10px; bottom:calc(env(safe-area-inset-bottom) + 10px); gap:8px; }
   .fab{ width:48px; height:48px; font-size:19px; }
+
+  .route-overlay{ max-height:50vh; }
+  .route-step{ padding:8px 10px; font-size:12.5px; }
+  .route-step .num{ width:20px; height:20px; font-size:11px; }
 }
 
 /* Mobile sangat kecil */
@@ -656,7 +957,7 @@ body{
   .vt-card h3{ font-size:17px; }
   .tour-open-link{ font-size:13px; padding:10px 14px; }
   #building-info p{ font-size:13px; }
-  .mapboxgl-popup-content{ max-width:84vw; padding:10px 12px; }
+  .mapboxgl-popup-content{ max-width:84vw; padding:10px 12px; padding-right:38px; }
 }
 
 /* Landscape low-height phones */
@@ -691,8 +992,9 @@ body{
     <h1>PETUNJUK</h1>
 
     <ul class="desc-list">
-      <li>Tekan tombol <b>Pilih Titik Awal</b> lalu ketuk peta.</li>
-      <li>Di laptop bisa juga klik dua kali pada peta.</li>
+      <li>Saat halaman dibuka, sistem otomatis ambil lokasimu & hitung rute tercepat (izinkan akses lokasi).</li>
+      <li>Klik tombol <b>📍 Lokasi Saya</b> di kanan untuk request ulang lokasi.</li>
+      <li>Atau tekan <b>Pilih Titik Awal</b> lalu ketuk peta untuk pilih lokasi lain.</li>
       <li>Tujuan akhir otomatis menuju Tamansari Yogyakarta.</li>
       <li>Garis merah menunjukkan rute tercepat kendaraan.</li>
       <li>Klik bangunan atau kolam untuk melihat informasi.</li>
@@ -717,14 +1019,6 @@ body{
     <button id="btnPickOrigin" class="btn-pick-origin" type="button">
       <span>📍</span> <span id="btnPickOriginText">Pilih Titik Awal di Peta</span>
     </button>
-
-    <div class="route-info" id="routeInfo">
-      <h3>Informasi Rute</h3>
-      <p class="empty">Belum ada rute dipilih. Tekan tombol di atas lalu ketuk peta.</p>
-    </div>
-
-    <button id="btnShowSteps" class="btn-show-route" type="button" style="display:none;">Petunjuk Rute Tercepat</button>
-    <div id="routeSteps" class="route-steps"></div>
   </aside>
 
   <!-- =========================
@@ -733,6 +1027,34 @@ body{
   <div class="map-wrap">
     <div id="map"></div>
     <div class="toast" id="toast"></div>
+
+    <!-- Floating Route Overlay (top-left) -->
+    <div class="route-overlay" id="routeOverlay" role="dialog" aria-label="Petunjuk Rute">
+      <div class="route-overlay__header">
+        <div class="route-overlay__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 20l-5.447-2.724A2 2 0 013 15.382V5.618a2 2 0 012.553-1.894L9 5"/><path d="M15 4l5.447 2.724A2 2 0 0121 8.618v9.764a2 2 0 01-2.553 1.894L15 19"/><path d="M9 5l6-1m0 16l-6 0"/><path d="M9 5v15M15 4v15"/></svg>
+          <span id="routeOverlayTitle">Rute Tercepat</span>
+        </div>
+        <button class="route-overlay__close" type="button" aria-label="Tutup petunjuk rute" id="routeOverlayClose">&times;</button>
+      </div>
+      <div class="route-overlay__body" id="routeOverlayBody">
+        <div class="route-empty">
+          <span class="icon">🗺️</span>
+          <div>Pilih titik awal untuk melihat rute tercepat ke Tamansari Yogyakarta.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tombol untuk membuka overlay kembali setelah ditutup -->
+    <button class="route-reopen" type="button" id="routeReopen" aria-label="Buka petunjuk rute">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s-8-7-8-13a8 8 0 1116 0c0 6-8 13-8 13z"/><circle cx="12" cy="9" r="3"/></svg>
+      <span>Petunjuk Rute</span>
+    </button>
+
+    <!-- Tombol Lokasi Saya (auto-detect + auto-route) -->
+    <button class="locate-fab" type="button" id="btnLocateMe" aria-label="Gunakan lokasi saya" title="Gunakan lokasi saya">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="8"/></svg>
+    </button>
   </div>
 
   <!-- =========================
@@ -844,13 +1166,28 @@ const map = new mapboxgl.Map({
 
 map.addControl(new mapboxgl.NavigationControl(), 'top-right');
 map.addControl(new mapboxgl.FullscreenControl(), 'top-right');
-map.addControl(
-  new mapboxgl.GeolocateControl({
-    positionOptions: { enableHighAccuracy: true },
-    trackUserLocation: true
-  }),
-  'top-right'
-);
+
+/* GeolocateControl bawaan Mapbox (top-right). Saat user klik tombol ini,
+   kita juga auto-build rute tercepat ke Tamansari. */
+const geolocateCtl = new mapboxgl.GeolocateControl({
+  positionOptions: { enableHighAccuracy: true, timeout: 10000 },
+  trackUserLocation: false,
+  showUserHeading: true,
+  showAccuracyCircle: true
+});
+map.addControl(geolocateCtl, 'top-right');
+
+geolocateCtl.on('geolocate', (e) => {
+  const coords = [e.coords.longitude, e.coords.latitude];
+  placeUserLocationMarker(coords);
+  routeFrom(coords, { source: 'auto' });
+});
+
+geolocateCtl.on('error', (err) => {
+  let msg = 'Gagal mengambil lokasi. Coba lagi.';
+  if(err && err.code === 1) msg = 'Izin lokasi ditolak. Aktifkan di browser.';
+  showToast(msg, 3200);
+});
 
 /* ============================================================
    LAYER LOADER
@@ -1075,6 +1412,55 @@ map.on('mouseenter', 'kolam',        () => map.getCanvas().style.cursor = 'point
 map.on('mouseleave', 'kolam',        () => map.getCanvas().style.cursor = '');
 
 /* ============================================================
+   ROUTE OVERLAY  (floating panel di atas map)
+   ============================================================ */
+const routeOverlay      = document.getElementById('routeOverlay');
+const routeOverlayBody  = document.getElementById('routeOverlayBody');
+const routeOverlayClose = document.getElementById('routeOverlayClose');
+const routeOverlayTitle = document.getElementById('routeOverlayTitle');
+const routeReopenBtn    = document.getElementById('routeReopen');
+
+let hasRoute = false;
+
+function showRouteOverlay(){
+  routeOverlay.classList.add('show');
+  routeReopenBtn.classList.remove('show');
+}
+
+function hideRouteOverlay(){
+  routeOverlay.classList.remove('show');
+  /* Tampilkan tombol re-open hanya kalau sudah ada rute */
+  if(hasRoute) routeReopenBtn.classList.add('show');
+}
+
+routeOverlayClose.addEventListener('click', hideRouteOverlay);
+routeReopenBtn.addEventListener('click', showRouteOverlay);
+
+function setOverlayEmpty(message){
+  routeOverlayTitle.textContent = 'Rute Tercepat';
+  routeOverlayBody.innerHTML = `
+    <div class="route-empty">
+      <span class="icon">🗺️</span>
+      <div>${message || 'Pilih titik awal untuk melihat rute tercepat ke Tamansari Yogyakarta.'}</div>
+    </div>
+  `;
+}
+
+function setOverlayLoading(){
+  routeOverlayTitle.textContent = 'Mencari Rute Tercepat...';
+  routeOverlayBody.innerHTML = `
+    <div class="route-empty">
+      <span class="icon">⏳</span>
+      <div>Menghitung jalur tercepat ke Tamansari Yogyakarta.</div>
+    </div>
+  `;
+  showRouteOverlay();
+}
+
+/* Tampilkan overlay default saat halaman dibuka (desktop & mobile) */
+showRouteOverlay();
+
+/* ============================================================
    PILIH TITIK AWAL  (mobile-friendly)
    ============================================================ */
 const btnPickOrigin = document.getElementById('btnPickOrigin');
@@ -1106,27 +1492,159 @@ map.on('click', (e) => {
     btnPickOrigin.classList.remove('active');
     btnPickOriginText.textContent = 'Pilih Titik Awal di Peta';
     map.getCanvas().style.cursor = '';
-    routeFrom([e.lngLat.lng, e.lngLat.lat]);
+    routeFrom([e.lngLat.lng, e.lngLat.lat], { source: 'manual' });
   }
 });
 
 map.on('dblclick', (e) => {
   e.preventDefault && e.preventDefault();
-  routeFrom([e.lngLat.lng, e.lngLat.lat]);
+  routeFrom([e.lngLat.lng, e.lngLat.lat], { source: 'manual' });
+});
+
+/* ============================================================
+   AUTO-DETECT CURRENT LOCATION  (tombol Lokasi Saya + auto on load)
+   ============================================================ */
+const btnLocateMe = document.getElementById('btnLocateMe');
+let userLocationMarker = null;
+let isLocating = false;
+
+function placeUserLocationMarker(coords){
+  if(userLocationMarker) userLocationMarker.remove();
+  const el = document.createElement('div');
+  el.className = 'user-location-marker';
+  el.innerHTML = '<div class="pulse"></div><div class="dot"></div>';
+  userLocationMarker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+    .setLngLat(coords)
+    .setPopup(new mapboxgl.Popup({ offset: 14, closeButton: false }).setHTML(
+      '<strong>Lokasi Saya</strong><br><span style="font-size:12px;color:#6b7280">Akurasi GPS perangkat</span>'
+    ))
+    .addTo(map);
+}
+
+/* Inti: ambil lokasi user lalu auto-build rute. Dipakai oleh
+   tombol Lokasi Saya & auto-trigger saat halaman pertama load. */
+function locateAndRoute(opts = {}){
+  const isAuto = !!opts.silent; /* silent=true: auto-trigger di load, jangan toast spam */
+
+  if(!('geolocation' in navigator)){
+    if(!isAuto) showToast('Browser tidak mendukung deteksi lokasi.', 2800);
+    return Promise.resolve(false);
+  }
+
+  if(isLocating) return Promise.resolve(false);
+  isLocating = true;
+
+  btnLocateMe.classList.add('loading');
+  btnLocateMe.disabled = true;
+
+  if(!isAuto){
+    showToast('Mengambil lokasi Anda...');
+  }
+  showRouteOverlay();
+  setOverlayLoading();
+
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        isLocating = false;
+        btnLocateMe.classList.remove('loading');
+        btnLocateMe.disabled = false;
+        const coords = [pos.coords.longitude, pos.coords.latitude];
+        placeUserLocationMarker(coords);
+        /* Smooth fly ke user lalu hitung rute tercepat */
+        map.flyTo({ center: coords, zoom: 16, speed: 1.2, curve: 1.4 });
+        routeFrom(coords, { source: 'auto' });
+        /* Tandai bahwa user sudah memberikan izin */
+        try { sessionStorage.setItem('geoPermission', 'granted'); } catch(e){}
+        resolve(true);
+      },
+      (err) => {
+        isLocating = false;
+        btnLocateMe.classList.remove('loading');
+        btnLocateMe.disabled = false;
+
+        if(err.code === 1){
+          /* Izin ditolak -- ingat supaya tidak auto-prompt lagi di load */
+          try { sessionStorage.setItem('geoPermission', 'denied'); } catch(e){}
+        }
+
+        let msg = 'Gagal mengambil lokasi.';
+        if(err.code === 1) msg = 'Izin lokasi ditolak. Pilih titik awal manual atau aktifkan izin di browser.';
+        else if(err.code === 2) msg = 'Lokasi tidak tersedia. Coba lagi.';
+        else if(err.code === 3) msg = 'Permintaan lokasi timeout. Coba lagi.';
+
+        /* Saat auto-trigger, hanya tampilkan pesan halus di overlay,
+           jangan spam toast yang mengganggu pertama kali masuk. */
+        if(isAuto){
+          setOverlayEmpty('Klik tombol 📍 di kanan untuk gunakan lokasi GPS, atau pakai "Pilih Titik Awal" di panel kiri.');
+        } else {
+          showToast(msg, 3400);
+          setOverlayEmpty('Tidak dapat mendeteksi lokasi Anda. Pakai tombol "Pilih Titik Awal" di panel.');
+        }
+        resolve(false);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    );
+  });
+}
+
+btnLocateMe.addEventListener('click', () => locateAndRoute({ silent: false }));
+
+/* Auto-trigger lokasi & rute saat halaman pertama dibuka.
+   Dijalankan setelah peta selesai load supaya marker & rute langsung
+   bisa digambar. Skip kalau user sebelumnya sudah menolak izin
+   (di session yg sama) -- tetap respect privasi. */
+function tryAutoLocateOnLoad(){
+  /* Skip kalau user sebelumnya sudah menolak izin */
+  let prev = null;
+  try { prev = sessionStorage.getItem('geoPermission'); } catch(e){}
+  if(prev === 'denied') return;
+
+  /* Cek Permissions API kalau tersedia: kalau status 'denied',
+     jangan auto-prompt. */
+  if(navigator.permissions && navigator.permissions.query){
+    navigator.permissions.query({ name: 'geolocation' })
+      .then((result) => {
+        if(result.state === 'denied'){
+          setOverlayEmpty('Izin lokasi diblokir. Klik tombol 📍 untuk request ulang, atau pakai "Pilih Titik Awal".');
+          return;
+        }
+        /* state === 'granted' atau 'prompt' -- aman untuk auto-trigger */
+        locateAndRoute({ silent: true });
+      })
+      .catch(() => {
+        /* Permissions API gagal -- tetap coba locate */
+        locateAndRoute({ silent: true });
+      });
+  } else {
+    /* Browser lawas tanpa Permissions API -- coba langsung */
+    locateAndRoute({ silent: true });
+  }
+}
+
+/* Tunggu peta selesai load + delay singkat agar UI sudah ter-render
+   (overlay muncul dulu) sebelum prompt izin lokasi muncul. */
+map.on('load', () => {
+  setTimeout(tryAutoLocateOnLoad, 600);
 });
 
 /* ============================================================
    BUILD ROUTE
    ============================================================ */
-async function routeFrom(start){
+async function routeFrom(start, opts = {}){
   const vehicleType = document.getElementById('vehicle').value;
 
   if(originMarker)  originMarker.remove();
   if(vehicleMarker) vehicleMarker.remove();
 
-  originMarker = new mapboxgl.Marker({ color: 'blue' })
-    .setLngLat(start)
-    .addTo(map);
+  /* Marker titik awal -- biru kalau auto-detect, merah kalau manual.
+     Kalau auto, marker user-location pulse sudah ada, jadi origin
+     marker dibikin kecil/transparan saja. */
+  if(opts.source !== 'auto'){
+    originMarker = new mapboxgl.Marker({ color: '#1d4ed8' })
+      .setLngLat(start)
+      .addTo(map);
+  }
 
   const vehicleEl = document.createElement('div');
   vehicleEl.className = 'vehicle-marker';
@@ -1136,6 +1654,7 @@ async function routeFrom(start){
 
   vehicleMarker = new mapboxgl.Marker(vehicleEl).setLngLat(start).addTo(map);
 
+  setOverlayLoading();
   showToast('Mencari rute tercepat...');
 
   try{
@@ -1144,6 +1663,7 @@ async function routeFrom(start){
     const json = await res.json();
 
     if(!json.routes || json.routes.length === 0){
+      setOverlayEmpty('Rute tidak ditemukan dari titik tersebut. Coba titik lain.');
       showToast('Rute tidak ditemukan. Coba titik lain.', 2600);
       return;
     }
@@ -1153,18 +1673,7 @@ async function routeFrom(start){
 
     const distance = (data.distance / 1000).toFixed(2);
     const duration = (data.duration / 60).toFixed(0);
-    const kendaraanText = vehicleType === 'cycling' ? 'Motor / Roda 2' : 'Mobil / Roda 4';
-
-    /* ====== INFO RUTE ====== */
-    document.getElementById('routeInfo').innerHTML = `
-      <h3>Informasi Rute</h3>
-      <div class="row"><b>Kendaraan</b><span>${kendaraanText}</span></div>
-      <div class="row"><b>Jarak</b><span>${distance} km</span></div>
-      <div class="row"><b>Estimasi</b><span>${duration} menit</span></div>
-    `;
-
-    /* ====== STEPS ====== */
-    renderSteps(data.legs[0].steps);
+    const kendaraanText = vehicleType === 'cycling' ? '🏍️ Motor' : '🚗 Mobil';
 
     /* ====== DRAW ROUTE ====== */
     if(map.getSource('route')){
@@ -1188,15 +1697,24 @@ async function routeFrom(start){
       }
     });
 
-    /* Fit map ke rute (otomatis zoom ke seluruh rute) */
+    /* Smooth fit ke seluruh rute. Berikan padding ekstra di kiri untuk
+       menghindari overlay route panel di desktop. */
     const coordinates = route.coordinates;
     const bounds = coordinates.reduce(
       (b, c) => b.extend(c),
       new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
     );
+    const isMobile  = window.innerWidth <= 768;
+    const isTablet  = window.innerWidth <= 1023;
     map.fitBounds(bounds, {
-      padding: window.innerWidth <= 768 ? 60 : 120,
-      duration: 800
+      padding: {
+        top:    isMobile ? 70 : 80,
+        bottom: isMobile ? 60 : 80,
+        left:   isTablet ? 30 : 380,   /* hindarkan overlap overlay kiri di desktop */
+        right:  isMobile ? 40 : 80
+      },
+      duration: 900,
+      essential: true
     });
 
     /* Animasi vehicle */
@@ -1210,30 +1728,63 @@ async function routeFrom(start){
     }
     animate();
 
-    showToast('Rute berhasil dibuat. Buka panel kiri untuk detail.', 2400);
+    /* ====== RENDER OVERLAY (info + steps) ====== */
+    hasRoute = true;
+    renderRouteOverlay({
+      kendaraan: kendaraanText,
+      distance,
+      duration,
+      steps: data.legs[0].steps,
+      source: opts.source
+    });
+    showRouteOverlay();
 
-    /* Di mobile, otomatis buka panel kiri agar user lihat info rute */
-    if(window.innerWidth <= 1023){
-      setTimeout(() => toggleDrawer('left', true), 800);
-    }
+    showToast(opts.source === 'auto'
+      ? 'Rute tercepat dari lokasimu siap!'
+      : 'Rute tercepat berhasil dibuat.',
+      2400
+    );
 
   } catch(err){
     console.error(err);
+    setOverlayEmpty('Gagal mengambil rute. Periksa koneksi internet.');
     showToast('Gagal mengambil rute. Periksa koneksi internet.', 3200);
   }
 }
 
 /* ============================================================
-   STEPS RENDERING & TOGGLE
+   RENDER ROUTE OVERLAY  (summary + steps)
    ============================================================ */
-const btnShowSteps = document.getElementById('btnShowSteps');
-const routeStepsEl = document.getElementById('routeSteps');
+function renderRouteOverlay({ kendaraan, distance, duration, steps, source }){
+  routeOverlayTitle.textContent = source === 'auto' ? 'Rute dari Lokasi Saya' : 'Rute Tercepat';
 
-btnShowSteps.addEventListener('click', () => {
-  const open = routeStepsEl.classList.toggle('open');
-  btnShowSteps.classList.toggle('open', open);
-  btnShowSteps.textContent = open ? 'Tutup Petunjuk' : 'Petunjuk Rute Tercepat';
-});
+  const stepsHtml = steps.map((step, idx) => {
+    const dist = (step.distance / 1000).toFixed(2);
+    const text = translateInstruction(step.maneuver.instruction || '');
+    return `
+      <div class="route-step">
+        <div class="num">${idx + 1}</div>
+        <div class="text">
+          ${escapeHtml(text)}
+          <span class="dist">${dist} km</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  routeOverlayBody.innerHTML = `
+    <div class="route-summary">
+      <div class="stat"><span class="label">Kendaraan</span><span class="value">${escapeHtml(kendaraan)}</span></div>
+      <div class="stat"><span class="label">Jarak</span><span class="value">${distance} km</span></div>
+      <div class="stat"><span class="label">Estimasi</span><span class="value">${duration} mnt</span></div>
+    </div>
+    <div class="route-steps-title">Petunjuk Rute</div>
+    ${stepsHtml || '<div class="route-empty"><div>Tidak ada petunjuk detail.</div></div>'}
+  `;
+
+  /* Reset scroll ke atas */
+  routeOverlayBody.scrollTop = 0;
+}
 
 function translateInstruction(instruction){
   const replacements = [
@@ -1278,25 +1829,14 @@ function translateInstruction(instruction){
   return out;
 }
 
-function renderSteps(steps){
-  routeStepsEl.innerHTML = '';
-  routeStepsEl.classList.remove('open');
-  btnShowSteps.classList.remove('open');
-  btnShowSteps.textContent = 'Petunjuk Rute Tercepat';
-  btnShowSteps.style.display = 'block';
-
-  steps.forEach((step, idx) => {
-    const dist = (step.distance / 1000).toFixed(2);
-    const text = translateInstruction(step.maneuver.instruction || '');
-    const div = document.createElement('div');
-    div.className = 'route-step';
-    div.innerHTML = `
-      <b>${idx + 1}. ${escapeHtml(text)}</b>
-      <span class="dist">${dist} km</span>
-    `;
-    routeStepsEl.appendChild(div);
-  });
-}
+/* ============================================================
+   AUTO RE-ROUTE saat user ganti kendaraan (kalau sudah ada rute)
+   ============================================================ */
+document.getElementById('vehicle').addEventListener('change', () => {
+  if(!hasRoute || !vehicleMarker) return;
+  const cur = vehicleMarker.getLngLat();
+  routeFrom([cur.lng, cur.lat], { source: 'manual' });
+});
 
 /* ============================================================
    BASEMAP SWITCHER

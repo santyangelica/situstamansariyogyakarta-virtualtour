@@ -4,12 +4,31 @@
   popup.setAttribute('aria-hidden', 'false');
 }
 
+function closeAudioPopup() {
+  const popup = document.getElementById('audioPopup');
+  if (!popup) return;
+  popup.style.display = 'none';
+  popup.setAttribute('aria-hidden', 'true');
+}
+
 function startTour(useAudio, tourQuery = '') {
   localStorage.setItem('playMusic', useAudio ? 'yes' : 'no');
   window.location.href = `pages/virtualtour.html${tourQuery}`;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
+  /* Audio popup: tutup saat klik area gelap di luar box, atau tekan Esc */
+  const audioPopup = document.getElementById('audioPopup');
+  if (audioPopup) {
+    audioPopup.addEventListener('click', (e) => {
+      if (e.target === audioPopup) closeAudioPopup();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && audioPopup.style.display === 'flex') {
+        closeAudioPopup();
+      }
+    });
+  }
   const modals = [
    
     { button: 'jamBtn', modal: 'jamModal', close: '.close-jam' },
