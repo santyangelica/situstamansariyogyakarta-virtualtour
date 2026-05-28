@@ -47,6 +47,9 @@
         var isInitialized = false;
         var isPaused = false;
 
+        /* Inisialisasi player TDV: bikin instance, pasang listener
+           preloadMediaShow & stateChange, parse query (media-index/
+           media-name) untuk navigasi langsung ke panorama tertentu. */
         function loadTour()
         {
             if(player)
@@ -117,6 +120,8 @@
             });
         }
 
+        /* Pause semua media player aktif (panorama, video, audio).
+           Dipanggil dari parent window via postMessage 'pauseTour'. */
         function pauseTour()
         {
             isPaused = true;
@@ -143,6 +148,7 @@
             player.getById('pauseGlobalAudios')();
         }
 
+        /* Resume semua player yang sebelumnya di-pause oleh pauseTour(). */
         function resumeTour()
         {
             isPaused = false;
@@ -158,22 +164,29 @@
             player.getById('resumeGlobalAudios')();
         }
 
+        /* Callback saat tour selesai inisialisasi. Kalau sebelumnya
+           pause request datang sebelum siap, eksekusi sekarang. */
         function onVirtualTourLoaded()
         {
             if(isPaused)
                 pauseTour();
         }
 
+        /* Callback saat tour mencapai akhir playlist. Hook untuk
+           extension custom; default kosong. */
         function onVirtualTourEnded()
         {
 
         }
 
+        /* Helper: ambil rootPlayer instance kalau tdvplayer sudah ada. */
         function getRootPlayer()
         {
             return window.tdvplayer !== undefined ? window.tdvplayer.getById('rootPlayer') : undefined;
         }
 
+        /* Pindah ke panorama tertentu via index playlist (0-based).
+           Dipakai saat URL punya ?media-index=N. */
         function setMediaByIndex(index)
         {
             var rootPlayer = getRootPlayer();
@@ -182,6 +195,8 @@
             }
         }
 
+        /* Pindah ke panorama via nama (case-sensitive label).
+           Dipakai saat URL punya ?media-name=Foo. */
         function setMediaByName(name)
         {
             var rootPlayer = getRootPlayer();
@@ -190,6 +205,9 @@
             }
         }
 
+        /* Trigger event (default 'click') ke overlay tertentu setelah
+           panorama mulai render. Dipakai untuk auto-buka popup saat
+           deep-link via ?trigger-overlay-name=Foo. */
         function triggerOverlayByName(item, name, eventName)
         {
             var rootPlayer = getRootPlayer();
@@ -203,6 +221,7 @@
             }
         }
 
+        /* Tampilkan splash preloader (background putih + teks "Loading..."). */
         function showPreloader()
         {
             var preloadContainer = document.getElementById('preloadContainer');
@@ -210,6 +229,8 @@
                 preloadContainer.style.opacity = 1;
         }
 
+        /* Sembunyikan preloader dengan transisi fade-out. Force-hide
+           via setTimeout sebagai fallback kalau transitionend tidak fire. */
         function disposePreloader()
         {
             var preloadContainer = document.getElementById('preloadContainer');
@@ -255,12 +276,16 @@
             }
         }
 
+        /* Body click handler -- legacy fallback untuk browser yg butuh
+           user gesture sebelum load tour. Tidak aktif di flow normal. */
         function onBodyClick(){
             document.body.removeEventListener("click", onBodyClick);
             document.body.removeEventListener("touchend", onBodyClick);
             loadTour();
         }
 
+        /* Entry point dari body onload: handle iOS WebKit viewport scaling
+           workaround, lalu show preloader & loadTour(). */
         function onLoad() {
             if (/AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent))
             {
@@ -310,11 +335,16 @@
 loadTour()
         }
 
+        /* Putar video dengan fallback untuk Safari desktop (autoplay policy).
+           Kalau gagal autoplay, mute video & detect klik user untuk play. */
         function playVideo(video) {
+            /* Helper: deteksi Safari desktop versi 11+ yg butuh
+               muted-autoplay khusus. */
             function isSafariDesktopV11orGreater() {
                 return /^((?!chrome|android|crios|ipad|iphone).)*safari/i.test(navigator.userAgent) && parseFloat(/Version\/([0-9]+\.[0-9]+)/i.exec(navigator.userAgent)[1]) >= 11;
             }
 
+            /* Listener: pertama kali user klik/touch video, unmute & play. */
             function detectUserAction() {
                 var onVideoClick = function(e) {
                     if(video.paused) {
@@ -353,6 +383,7 @@ loadTour()
             }
         }
 
+        /* Deteksi mode Oculus VR Web (URL hash mengandung 'ovrweb'). */
         function isOVRWeb(){
             return window.location.hash.substring(1).split('&').indexOf('ovrweb') > -1;
         }
@@ -718,6 +749,9 @@ loadTour()
                 'Image_45E0EBBC_4BCC_8DAB_41D1_1835FA1540D4'
             ];
 
+            /* Saat halaman dipakai sebagai preview iframe (mini tour di
+               peta interaktif), sembunyikan semua kontrol UI. Pakai
+               kombinasi DOM style + TDV API supaya benar-benar hilang. */
             function hidePreviewControls(){
                 previewHiddenIds.forEach(function(id){
                     var element = document.getElementById(id);
@@ -753,6 +787,8 @@ loadTour()
             var button = document.getElementById('audioUnlock');
             if(localStorage.getItem('playMusic') !== 'yes' || location.search.indexOf('preview=1') !== -1) return;
 
+            /* Putar audio background tour kalau localStorage 'playMusic'='yes'.
+               Return true kalau berhasil play, false kalau player belum siap. */
             function playTourAudio(){
                 try {
                     if(window.tdvplayer && window.tdvplayer.getById) {
@@ -791,6 +827,7 @@ loadTour()
            agar perubahan persisten.
            ============================================================ */
         (function(){
+            /* Helper viewport size check. */
             function isMobile(){ return window.innerWidth <= 768; }
             function isSmall(){ return window.innerWidth <= 420; }
 
@@ -800,6 +837,9 @@ loadTour()
                Pendekatan: pakai TDV Player API untuk set width + left.
                Player akan otomatis re-distribute children (tombol-tombol
                di dalam panel) agar terdistribusi rata di lebar baru. */
+            /* Generate list properti TDV component yg perlu di-override
+               di mobile. Return null kalau di desktop (>768px) -> trigger
+               applyDesktopDefaults. */
             function getMobileOverrides(){
                 var w = window.innerWidth;
                 if(w > 768) return null;
@@ -836,6 +876,9 @@ loadTour()
                 }
             };
 
+            /* Reset properti komponen ke nilai default desktop & bersihkan
+               inline style sisa mobile (left/right/transform) supaya CSS
+               @media yg center via left:50% bisa take over. */
             function applyDesktopDefaults(){
                 if(!window.tdvplayer || !window.tdvplayer.getById) return;
                 Object.keys(DESKTOP_DEFAULTS).forEach(function(id){
@@ -870,6 +913,8 @@ loadTour()
                 } catch(e){}
             }
 
+            /* Apply mobile overrides ke TDV (set width + left). Bersihkan
+               dulu inline style desktop enforcer supaya TDV API bisa menang. */
             function applyMobileOverrides(){
                 if(!window.tdvplayer || !window.tdvplayer.getById) return false;
                 var overrides = getMobileOverrides();
@@ -907,7 +952,8 @@ loadTour()
                 return anyApplied;
             }
 
-            /* Apply on tourLoaded with retry to catch late-rendered components */
+            /* Apply mobile overrides on tour load + retry interval untuk
+               catch komponen yg ter-render telat oleh TDV. */
             function startEnforcer(){
                 applyMobileOverrides();
                 var tries = 0;
@@ -948,6 +994,9 @@ loadTour()
                Player akan memotong panorama horizontal, lalu pengguna
                masih bisa drag untuk melihat sekeliling 360°.
                ============================================================ */
+            /* Kunci HFOV panorama ke 70° di mobile portrait untuk hindari
+               efek fisheye distorsi (default TDV auto-stretch HFOV jadi
+               120-140° di aspect ratio sempit). */
             function clampPanoramaFov(){
                 if(!window.tdvplayer || !window.tdvplayer.getById) return;
                 var w = window.innerWidth;
@@ -998,6 +1047,9 @@ loadTour()
             /* Re-apply HFOV setiap kali user pindah ke panorama lain (klik hotspot
                atau tombol next). Player TDV reset HFOV ke nilai default tiap
                kali panorama berubah. */
+            /* Bind clampPanoramaFov ke event change playlist supaya HFOV
+               tetap terkunci saat user pindah panorama. Idempotent via
+               flag __hfovBound. */
             function bindPanoramaChange(){
                 if(!window.tdvplayer || !window.tdvplayer.getById) return false;
                 var mainPL = window.tdvplayer.getById('mainPlayList');
@@ -1025,6 +1077,9 @@ loadTour()
 
                Berlaku DI SEMUA LAYAR (mobile + desktop) supaya konsisten.
                ============================================================ */
+            /* Inject <img> overlay native untuk denah Tamansari supaya
+               anti-pecah di retina (canvas TDV resolusinya rendah). Setup
+               wrapper dengan custom pan + zoom handler. */
             function ensureMapImgOverlay(){
                 /* 1. Modal MapViewer expanded -- pakai wrapper untuk pan/zoom */
                 var mapViewer = document.getElementById('MapViewer');
@@ -1090,6 +1145,10 @@ loadTour()
                - Double-click / double-tap = reset zoom
                Zoom tanpa batas (max 50x).
                ============================================================ */
+            /* Pasang handler pan + zoom custom untuk wrapper denah:
+               - mouse drag (desktop) / 1-finger drag (mobile) = pan
+               - mouse wheel (desktop) / 2-finger pinch (mobile) = zoom
+               - dblclick / dbltap = reset fit-contain */
             function setupMapPanZoom(wrap, img){
                 if(wrap.__panZoomReady) return;
                 wrap.__panZoomReady = true;
@@ -1102,7 +1161,8 @@ loadTour()
                     natW: 0, natH: 0    /* ukuran natural gambar */
                 };
 
-                /* Hitung initial fit-contain saat gambar siap */
+                /* Hitung scale awal supaya gambar denah fit-contain di
+                   wrapper (tidak terpotong, tidak ada white space berlebih). */
                 function fitContain(){
                     var rect = wrap.getBoundingClientRect();
                     if(!rect.width || !rect.height || !state.natW || !state.natH) return;
@@ -1115,6 +1175,8 @@ loadTour()
                     apply();
                 }
 
+                /* Apply transform ke <img> berdasarkan state.x/y/scale.
+                   transform-origin 0 0 supaya math anchor zoom akurat. */
                 function apply(){
                     img.style.transform = 'translate(' + state.x + 'px, ' + state.y + 'px) scale(' + state.scale + ')';
                     img.style.transformOrigin = '0 0';
@@ -1150,6 +1212,9 @@ loadTour()
                     zoomAt(mx, my, factor);
                 }, { passive: false });
 
+                /* Zoom in/out di anchor (px,py relatif center wrap),
+                   clamp ke minScale/maxScale, recalc translate supaya
+                   point di gambar yg ada di anchor tetap di anchor. */
                 function zoomAt(px, py, factor){
                     var newScale = state.scale * factor;
                     if(newScale < state.minScale) newScale = state.minScale;
@@ -1323,6 +1388,8 @@ loadTour()
                unit dengan pixel readable. Plus paksa font-size pada
                container HTMLText.
                ============================================================ */
+            /* Paksa font-size minimum di popup info bangunan saat mobile.
+               TDV pakai unit vw yg jadi terlalu kecil di HP <380px (~3px). */
             function fixPopupFontSize(){
                 if(window.innerWidth > 768) return;
                 var viewer = document.getElementById('viewer');
@@ -1483,10 +1550,12 @@ loadTour()
         (function(){
             var PANEL_ID = 'Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95';
 
+            /* Helper: cek apakah viewport saat ini desktop (>768px). */
             function isDesktop(){ return window.innerWidth > 768; }
 
-            /* Hapus inline style positioning supaya CSS @media take over.
-               Dipanggil saat di desktop. */
+            /* DESKTOP only: hapus inline style positioning sisa mobile,
+               lalu re-set left:50% + transform:translateX(-50%) dengan
+               !important. Skip kalau mobile (di-handle TDV API). */
             function cleanInlineForDesktop(){
                 if(!isDesktop()) return;
                 var panel = document.getElementById(PANEL_ID);
@@ -1503,6 +1572,8 @@ loadTour()
                 panel.style.setProperty('transform-origin', 'bottom center', 'important');
             }
 
+            /* Trigger cleanInlineForDesktop berkala via setInterval supaya
+               TDV inline writes pada panel kontrol selalu di-bersihkan. */
             function startEnforce(){
                 cleanInlineForDesktop();
                 var n = 0;
@@ -1547,6 +1618,9 @@ loadTour()
 
             /* Observer: setiap kali TDV menulis ulang inline style
                saat di desktop, bersihkan & re-apply centering. */
+            /* Pasang MutationObserver pada attribute style panel.
+               Setiap kali TDV menulis ulang style inline saat di desktop,
+               langsung re-clean & re-apply centering. Idempotent. */
             function attachObserver(){
                 var panel = document.getElementById(PANEL_ID);
                 if(!panel || panel.__deskCenterObserved) return false;
@@ -1601,6 +1675,8 @@ loadTour()
         (function(){
             var INFINITE_IDLE = 1e12;
 
+            /* Set timeToIdle ke 1e12 ms (~32 tahun) supaya idleSequence
+               (auto-rotate setelah idle) praktis tidak akan trigger. */
             function setInfiniteIdle(){
                 if(!window.tdvplayer || !window.tdvplayer.getByClassName) return;
                 try {
@@ -1611,6 +1687,9 @@ loadTour()
                 } catch(e){}
             }
 
+            /* Panggil pauseCamera() di setiap PanoramaPlayer -- API resmi
+               TDV untuk menghentikan animasi camera (initialSequence /
+               idleSequence). State player jadi 'paused'. */
             function pauseAllPanoramaPlayers(){
                 if(!window.tdvplayer || !window.tdvplayer.getByClassName) return;
                 try {
@@ -1628,6 +1707,9 @@ loadTour()
             /* Lock-back: tiap kali player coba kembali ke state 'playing',
                langsung pause lagi. Ini memastikan tidak ada kondisi di mana
                TDV otomatis resume camera sequence. */
+            /* Bind 'stateChange' ke setiap PanoramaPlayer. Kalau state
+               berubah ke 'playing' (misal: hotspot click yg auto-play),
+               langsung pauseCamera() lagi -- player terkunci di paused. */
             function bindPlayerStateChange(){
                 if(!window.tdvplayer || !window.tdvplayer.getByClassName) return false;
                 var bound = 0;
@@ -1653,6 +1735,9 @@ loadTour()
                 return bound > 0;
             }
 
+            /* Combo: setInfiniteIdle + pauseAllPanoramaPlayers +
+               bindPlayerStateChange. Dipakai sebagai "kill switch"
+               untuk auto-rotate. */
             function applyDisable(){
                 setInfiniteIdle();
                 pauseAllPanoramaPlayers();
@@ -1680,7 +1765,9 @@ loadTour()
             setTimeout(applyDisable, 2500);
             setTimeout(applyDisable, 5000);
 
-            /* Re-apply tiap kali user pindah panorama */
+            /* Bind playlist 'change' event supaya saat user pindah
+               panorama, applyDisable() di-trigger lagi (TDV bisa reset
+               player state pada panorama baru). */
             function bindPlaylistChange(){
                 if(!window.tdvplayer || !window.tdvplayer.getById) return false;
                 var mainPL = window.tdvplayer.getById('mainPlayList');
@@ -1707,6 +1794,9 @@ loadTour()
             /* Bind 'begin' ke setiap PanoramaPlayListItem -- lebih reliable
                ketimbang playlist 'change' karena 'begin' dipanggil tepat
                saat panorama mulai render. */
+            /* Bind 'begin' ke setiap PanoramaPlayListItem. Lebih reliable
+               ketimbang playlist 'change' karena 'begin' fire tepat saat
+               panorama baru mulai render. */
             function bindAllBegins(){
                 if(!window.tdvplayer || !window.tdvplayer.bindOnObjectsOf) return false;
                 if(window.__beginBoundForAutoRotate) return true;

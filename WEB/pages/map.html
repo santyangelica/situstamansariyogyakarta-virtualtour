@@ -1108,7 +1108,13 @@ const tamanSari = [110.3594, -7.8101];
 let originMarker = null;
 let vehicleMarker = null;
 let pickMode = false;
+/* Simpan titik awal terakhir supaya bisa re-route saat user ganti
+   tipe kendaraan tanpa kehilangan starting point. vehicleMarker
+   tidak bisa dipakai karena sudah dianimasi sampai ke Tamansari. */
+let lastOrigin = null;
 
+/* Tampilkan toast singkat di pojok atas peta dengan auto-dismiss
+   (default 2.2s). Pakai untuk feedback action seperti "Mencari rute". */
 function showToast(msg, ms = 2200){
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -1120,6 +1126,8 @@ function showToast(msg, ms = 2200){
 /* ============================================================
    DRAWER (mobile)
    ============================================================ */
+/* Buka/tutup drawer sidebar (mobile). 'side' = 'left' atau 'right',
+   'open' = boolean. Side lain auto-tertutup saat satu side dibuka. */
 function toggleDrawer(side, open){
   const left  = document.getElementById('sidebarLeft');
   const right = document.getElementById('sidebarRight');
@@ -1137,6 +1145,8 @@ function toggleDrawer(side, open){
   back.classList.toggle('show', anyOpen);
 }
 
+/* Tutup kedua sidebar drawer + backdrop. Dipakai saat klik area gelap,
+   tekan Esc, atau resize ke desktop. */
 function closeAllDrawers(){
   document.getElementById('sidebarLeft').classList.remove('open');
   document.getElementById('sidebarRight').classList.remove('open');
@@ -1177,12 +1187,16 @@ const geolocateCtl = new mapboxgl.GeolocateControl({
 });
 map.addControl(geolocateCtl, 'top-right');
 
+/* Saat user pakai GeolocateControl bawaan Mapbox (top-right),
+   tangkap lokasi → pasang marker pulse → auto-build rute tercepat. */
 geolocateCtl.on('geolocate', (e) => {
   const coords = [e.coords.longitude, e.coords.latitude];
   placeUserLocationMarker(coords);
   routeFrom(coords, { source: 'auto' });
 });
 
+/* Handler error dari GeolocateControl: tampilkan toast jelas
+   sesuai jenis error (izin ditolak, GPS tidak tersedia, dll). */
 geolocateCtl.on('error', (err) => {
   let msg = 'Gagal mengambil lokasi. Coba lagi.';
   if(err && err.code === 1) msg = 'Izin lokasi ditolak. Aktifkan di browser.';
@@ -1192,6 +1206,11 @@ geolocateCtl.on('error', (err) => {
 /* ============================================================
    LAYER LOADER
    ============================================================ */
+/* Tambahkan source GeoJSON Tamansari + 3 layer:
+   - bangunan-3d (fill-extrusion 3D bangunan utama)
+   - kolam (fill biru untuk Umbul Muncar/Binangun/Kuras)
+   - outline (stroke putih halus untuk semua fitur)
+   Idempotent: skip kalau source/layer sudah ada (penting saat ganti basemap). */
 function loadTamansariLayers(){
   if(!map.getSource('tamansari')){
     map.addSource('tamansari', {
@@ -1259,6 +1278,8 @@ function loadTamansariLayers(){
   }
 }
 
+/* Saat peta selesai load: pasang layer Tamansari & resize untuk
+   memastikan canvas Mapbox match container size. */
 map.on('load', () => {
   loadTamansariLayers();
   map.resize();
@@ -1354,10 +1375,16 @@ const tourTargets = {
   }
 };
 
+/* Ambil nama bangunan dari properties GeoJSON. GeoJSON Tamansari
+   pakai field per-bangunan (mis. "GEDHONG TEMANTEN": 1) -- ambil
+   value pertama yg truthy. Fallback ke "Tamansari Yogyakarta". */
 function getFeatureName(props){
   return Object.values(props).find(Boolean) || 'Tamansari Yogyakarta';
 }
 
+/* Ambil data tour target (mediaIndex, judul, sejarah) berdasarkan
+   nama bangunan. Kalau tidak ada di mapping, kembalikan default
+   yang aman supaya popup tetap bisa render. */
 function getTourTarget(name){
   return tourTargets[name] || {
     mediaIndex: 1,
@@ -1366,10 +1393,16 @@ function getTourTarget(name){
   };
 }
 
+/* Escape karakter HTML berbahaya (& < > ") sebelum inject ke innerHTML.
+   Wajib dipakai untuk teks dinamis dari data agar tidak jadi XSS vector. */
 function escapeHtml(s){
   return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 }
 
+/* Saat user klik bangunan/kolam, buat:
+   1. Popup ringkas di peta dengan tombol "Lihat Panorama Ini"
+   2. Update preview iframe + info panel kanan dengan sejarah lengkap
+   Di mobile, tampilkan toast yang mengarahkan ke panel kanan. */
 function createPopup(e){
   const props  = e.features[0].properties;
   const nama   = getFeatureName(props);
@@ -1422,11 +1455,14 @@ const routeReopenBtn    = document.getElementById('routeReopen');
 
 let hasRoute = false;
 
+/* Tampilkan overlay petunjuk rute & sembunyikan tombol re-open. */
 function showRouteOverlay(){
   routeOverlay.classList.add('show');
   routeReopenBtn.classList.remove('show');
 }
 
+/* Sembunyikan overlay; tampilkan tombol re-open kalau sudah ada
+   rute supaya user bisa buka lagi tanpa kehilangan data. */
 function hideRouteOverlay(){
   routeOverlay.classList.remove('show');
   /* Tampilkan tombol re-open hanya kalau sudah ada rute */
@@ -1436,6 +1472,8 @@ function hideRouteOverlay(){
 routeOverlayClose.addEventListener('click', hideRouteOverlay);
 routeReopenBtn.addEventListener('click', showRouteOverlay);
 
+/* Render state "kosong" di overlay (belum ada rute / error).
+   Pesan kustom bisa di-pass via parameter. */
 function setOverlayEmpty(message){
   routeOverlayTitle.textContent = 'Rute Tercepat';
   routeOverlayBody.innerHTML = `
@@ -1446,6 +1484,7 @@ function setOverlayEmpty(message){
   `;
 }
 
+/* Render state "loading" di overlay saat sedang fetch rute dari Mapbox API. */
 function setOverlayLoading(){
   routeOverlayTitle.textContent = 'Mencari Rute Tercepat...';
   routeOverlayBody.innerHTML = `
@@ -1466,6 +1505,8 @@ showRouteOverlay();
 const btnPickOrigin = document.getElementById('btnPickOrigin');
 const btnPickOriginText = document.getElementById('btnPickOriginText');
 
+/* Toggle pickMode: aktif → peta jadi cursor crosshair, klik berikutnya
+   dianggap sebagai pemilihan titik awal. Klik tombol lagi untuk batal. */
 btnPickOrigin.addEventListener('click', () => {
   pickMode = !pickMode;
   if(pickMode){
@@ -1482,8 +1523,10 @@ btnPickOrigin.addEventListener('click', () => {
   }
 });
 
+/* Click handler global pada peta: hanya bertindak saat pickMode aktif.
+   Skip kalau user klik bangunan/kolam (dipegang oleh layer click handler
+   terpisah) untuk menghindari konflik. */
 map.on('click', (e) => {
-  /* Hindari konflik klik bangunan */
   const features = map.queryRenderedFeatures(e.point, { layers: ['bangunan-3d', 'kolam'] });
   if(features.length > 0 && !pickMode) return;
 
@@ -1496,6 +1539,8 @@ map.on('click', (e) => {
   }
 });
 
+/* Double-click sebagai shortcut desktop untuk pilih titik awal cepat
+   tanpa perlu aktifkan pickMode dulu. Mobile pakai tombol manual. */
 map.on('dblclick', (e) => {
   e.preventDefault && e.preventDefault();
   routeFrom([e.lngLat.lng, e.lngLat.lat], { source: 'manual' });
@@ -1508,6 +1553,8 @@ const btnLocateMe = document.getElementById('btnLocateMe');
 let userLocationMarker = null;
 let isLocating = false;
 
+/* Pasang/replace marker custom "Lokasi Saya" (titik biru + ring pulse).
+   Punya popup ringkas kalau diklik. */
 function placeUserLocationMarker(coords){
   if(userLocationMarker) userLocationMarker.remove();
   const el = document.createElement('div');
@@ -1521,8 +1568,10 @@ function placeUserLocationMarker(coords){
     .addTo(map);
 }
 
-/* Inti: ambil lokasi user lalu auto-build rute. Dipakai oleh
-   tombol Lokasi Saya & auto-trigger saat halaman pertama load. */
+/* Inti: minta GPS user lalu auto-build rute tercepat ke Tamansari.
+   - opts.silent = true: mode auto-trigger di page load (tanpa toast spam).
+   - opts.silent = false (default): mode tombol manual (toast & error msg eksplisit).
+   Simpan status izin di sessionStorage untuk respect user choice di refresh. */
 function locateAndRoute(opts = {}){
   const isAuto = !!opts.silent; /* silent=true: auto-trigger di load, jangan toast spam */
 
@@ -1590,10 +1639,10 @@ function locateAndRoute(opts = {}){
 
 btnLocateMe.addEventListener('click', () => locateAndRoute({ silent: false }));
 
-/* Auto-trigger lokasi & rute saat halaman pertama dibuka.
-   Dijalankan setelah peta selesai load supaya marker & rute langsung
-   bisa digambar. Skip kalau user sebelumnya sudah menolak izin
-   (di session yg sama) -- tetap respect privasi. */
+/* Auto-trigger lokasi saat halaman pertama dibuka.
+   - Skip kalau session ini user sudah pernah menolak izin (privacy).
+   - Pakai Permissions API jika tersedia: state 'denied' = jangan prompt.
+   - State 'granted'/'prompt' = panggil locateAndRoute mode silent. */
 function tryAutoLocateOnLoad(){
   /* Skip kalau user sebelumnya sudah menolak izin */
   let prev = null;
@@ -1622,8 +1671,8 @@ function tryAutoLocateOnLoad(){
   }
 }
 
-/* Tunggu peta selesai load + delay singkat agar UI sudah ter-render
-   (overlay muncul dulu) sebelum prompt izin lokasi muncul. */
+/* Tunggu peta load, beri delay 600ms supaya overlay sempat render
+   sebelum browser munculkan dialog izin lokasi. */
 map.on('load', () => {
   setTimeout(tryAutoLocateOnLoad, 600);
 });
@@ -1631,8 +1680,16 @@ map.on('load', () => {
 /* ============================================================
    BUILD ROUTE
    ============================================================ */
+/* Hitung & gambar rute tercepat dari titik 'start' ke Tamansari.
+   - Pakai Mapbox Directions API sesuai vehicleType (driving/cycling).
+   - opts.source = 'auto' dari GPS, 'manual' dari pickMode/dblclick.
+   - Render polyline merah, marker kendaraan, animasi sepanjang rute,
+     dan update overlay dengan summary + step-by-step instructions. */
 async function routeFrom(start, opts = {}){
   const vehicleType = document.getElementById('vehicle').value;
+
+  /* Simpan untuk re-route saat user ganti kendaraan */
+  lastOrigin = [start[0], start[1]];
 
   if(originMarker)  originMarker.remove();
   if(vehicleMarker) vehicleMarker.remove();
@@ -1717,7 +1774,8 @@ async function routeFrom(start, opts = {}){
       essential: true
     });
 
-    /* Animasi vehicle */
+    /* Animasi marker kendaraan menyusuri rute frame-by-frame
+       (preview visual; tidak mengganggu navigasi user). */
     let i = 0;
     function animate(){
       if(i < coordinates.length){
@@ -1755,6 +1813,8 @@ async function routeFrom(start, opts = {}){
 /* ============================================================
    RENDER ROUTE OVERLAY  (summary + steps)
    ============================================================ */
+/* Render konten overlay rute: summary 3-kolom (kendaraan/jarak/durasi)
+   + daftar langkah-langkah. Title berbeda kalau source = 'auto'. */
 function renderRouteOverlay({ kendaraan, distance, duration, steps, source }){
   routeOverlayTitle.textContent = source === 'auto' ? 'Rute dari Lokasi Saya' : 'Rute Tercepat';
 
@@ -1786,6 +1846,9 @@ function renderRouteOverlay({ kendaraan, distance, duration, steps, source }){
   routeOverlayBody.scrollTop = 0;
 }
 
+/* Translate instruksi rute Mapbox dari English → Bahasa Indonesia.
+   Hanya replace pola umum (turn left/right, continue, dll) — fallback
+   ke teks English asli kalau pola tidak match. */
 function translateInstruction(instruction){
   const replacements = [
     [/Turn right onto/gi, 'Belok kanan ke'],
@@ -1832,15 +1895,21 @@ function translateInstruction(instruction){
 /* ============================================================
    AUTO RE-ROUTE saat user ganti kendaraan (kalau sudah ada rute)
    ============================================================ */
+/* Saat user ganti tipe kendaraan: kalau sudah ada rute,
+   re-fetch dengan tipe baru pakai titik awal yg sama.
+   Pakai lastOrigin (titik awal asli) -- BUKAN vehicleMarker.getLngLat()
+   karena marker kendaraan sudah dianimasi sampai ke Tamansari. */
 document.getElementById('vehicle').addEventListener('change', () => {
-  if(!hasRoute || !vehicleMarker) return;
-  const cur = vehicleMarker.getLngLat();
-  routeFrom([cur.lng, cur.lat], { source: 'manual' });
+  if(!hasRoute || !lastOrigin) return;
+  routeFrom([lastOrigin[0], lastOrigin[1]], { source: 'manual' });
 });
 
 /* ============================================================
    BASEMAP SWITCHER
    ============================================================ */
+/* Switch basemap (Satellite/Street/Light/Dark). Setelah style baru
+   load, re-add layer Tamansari karena setStyle() menghapus semua
+   custom layer/source. */
 document.getElementById('basemap').addEventListener('change', function(){
   const styleUrl = 'mapbox://styles/mapbox/' + this.value;
   map.setStyle(styleUrl);
@@ -1857,6 +1926,9 @@ document.getElementById('basemap').addEventListener('change', function(){
 /* ============================================================
    SAFE iframe load timeout (jika preview lambat di mobile)
    ============================================================ */
+/* Safety check: log warning kalau iframe preview Virtual Tour belum
+   load setelah 8 detik. Tidak melakukan apa-apa lagi (iframe akan
+   tetap mencoba load di background). */
 (function(){
   const f = document.getElementById('miniTourFrame');
   if(!f) return;
@@ -1873,6 +1945,7 @@ document.getElementById('basemap').addEventListener('change', function(){
 /* ============================================================
    Tutup drawer dengan ESC (desktop)
    ============================================================ */
+/* Tutup drawer dengan Escape (desktop). Tidak menutup overlay rute. */
 document.addEventListener('keydown', (e) => {
   if(e.key === 'Escape') closeAllDrawers();
 });
