@@ -437,26 +437,17 @@ loadTour()
         }
 
         /* ============================================================
-           DESKTOP -- CENTERING PANEL KONTROL BAWAH
+           CENTERING PANEL KONTROL BAWAH
            ============================================================
-           Di desktop (>768px), panel di-center via CSS dengan
-           `left: 50%` + `transform: translateX(-50%)`. CSS `!important`
-           menang atas inline TDV, dan JS enforcer (lihat di akhir
-           file) re-apply jika TDV menulis ulang inline style.
+           Positioning panel kontrol ditangani via TDV Player API
+           (lihat IIFE "CENTERING PANEL" di akhir file) -- SATU sumber
+           kebenaran, dipanggil saat load + resize + orientationchange.
 
-           Di mobile (<=768px), panel kontrol diatur via TDV Player API
-           (lihat applyMobileOverrides di JS) -- TDV menulis width +
-           left baru ke container, lalu otomatis re-distribute children
-           (tombol-tombol) agar terdistribusi rata di lebar baru.
+           CSS di sini SENGAJA TIDAK mengatur left/right/transform untuk
+           menghindari konflik dengan TDV API (inline !important CSS akan
+           menang atas API & bikin race saat resize). CSS hanya untuk
+           hal non-posisi bila diperlukan.
            ============================================================ */
-        @media (min-width: 769px) {
-            #Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95 {
-                right: auto !important;
-                left: 50% !important;
-                transform: translateX(-50%) !important;
-                transform-origin: bottom center !important;
-            }
-        }
 
         /* ============================================================
            RESPONSIVE OVERRIDE -- CONTAINER DENAH (FLOATING + EXPANDED)
@@ -831,155 +822,9 @@ loadTour()
             function isMobile(){ return window.innerWidth <= 768; }
             function isSmall(){ return window.innerWidth <= 420; }
 
-            /* Komponen yang perlu disesuaikan ukurannya di mobile.
-               Setiap entry: [id, propertyOverrides]
-               
-               Pendekatan: pakai TDV Player API untuk set width + left.
-               Player akan otomatis re-distribute children (tombol-tombol
-               di dalam panel) agar terdistribusi rata di lebar baru. */
-            /* Generate list properti TDV component yg perlu di-override
-               di mobile. Return null kalau di desktop (>768px) -> trigger
-               applyDesktopDefaults. */
-            function getMobileOverrides(){
-                var w = window.innerWidth;
-                if(w > 768) return null;
-
-                var ctrlW = Math.min(360, Math.round(w * 0.96));
-
-                return [
-                    {
-                        /* Panel kontrol bawah -- override width supaya
-                           player TDV menghitung ulang posisi children agar
-                           terdistribusi rata di lebar baru. */
-                        id: 'Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95',
-                        props: {
-                            width:  ctrlW,
-                            right:  null,
-                            left:   Math.round((w - ctrlW) / 2),
-                            bottom: 16,
-                            top:    null
-                        }
-                    }
-                ];
-            }
-
-            /* Original values dari script.js -- untuk reset saat dari mobile -> desktop.
-               Di desktop, kita pakai CSS saja untuk centering (left:50% + translateX). */
-            var DESKTOP_DEFAULTS = {
-                'Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95': {
-                    width:  361.9,
-                    height: 121.65,
-                    right:  null,    /* CSS yg handle centering */
-                    left:   null,    /* biarkan CSS pakai 50% */
-                    bottom: '4.2%',
-                    top:    null
-                }
-            };
-
-            /* Reset properti komponen ke nilai default desktop & bersihkan
-               inline style sisa mobile (left/right/transform) supaya CSS
-               @media yg center via left:50% bisa take over. */
-            function applyDesktopDefaults(){
-                if(!window.tdvplayer || !window.tdvplayer.getById) return;
-                Object.keys(DESKTOP_DEFAULTS).forEach(function(id){
-                    try {
-                        var comp = window.tdvplayer.getById(id);
-                        if(!comp || !comp.set) return;
-                        var props = DESKTOP_DEFAULTS[id];
-                        Object.keys(props).forEach(function(k){
-                            try { comp.set(k, props[k]); } catch(e){}
-                        });
-                    } catch(e){}
-                });
-
-                /* PENTING: TDV API `comp.set('left', null)` tidak selalu
-                   menghapus inline `style.left` di DOM. Saat transisi
-                   mobile->desktop, inline `left: <px>` peninggalan mobile
-                   masih ada -> panel terlihat di kiri-bawah meskipun CSS
-                   @media punya `left:50% !important`.
-                   Solusi: hapus langsung inline left/right/transform agar
-                   CSS @media take over. */
-                var panel = document.getElementById('Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95');
-                if(panel){
-                    panel.style.removeProperty('left');
-                    panel.style.removeProperty('right');
-                    panel.style.removeProperty('transform');
-                }
-
-                /* Pastikan tombol toggle denah visible (di kiri-atas) */
-                try {
-                    var btn = window.tdvplayer.getById('Image_45E0EBBC_4BCC_8DAB_41D1_1835FA1540D4');
-                    if(btn && btn.set) btn.set('visible', true);
-                } catch(e){}
-            }
-
-            /* Apply mobile overrides ke TDV (set width + left). Bersihkan
-               dulu inline style desktop enforcer supaya TDV API bisa menang. */
-            function applyMobileOverrides(){
-                if(!window.tdvplayer || !window.tdvplayer.getById) return false;
-                var overrides = getMobileOverrides();
-                if(!overrides){
-                    /* Desktop: reset ke nilai default agar tombol tidak rusak
-                       setelah pernah ke mobile */
-                    applyDesktopDefaults();
-                    return true;
-                }
-
-                /* Bersihkan inline style yg mungkin ditulis enforcer desktop
-                   (left:50%, transform:translateX(-50%) dengan !important).
-                   Jika tidak dibersihkan, mobile TDV API set('left', px) tetap
-                   kalah karena inline desktop punya !important. */
-                var panel = document.getElementById('Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95');
-                if(panel){
-                    panel.style.removeProperty('left');
-                    panel.style.removeProperty('right');
-                    panel.style.removeProperty('transform');
-                    panel.style.removeProperty('transform-origin');
-                }
-
-                var anyApplied = false;
-                overrides.forEach(function(o){
-                    try {
-                        var comp = window.tdvplayer.getById(o.id);
-                        if(!comp || !comp.set) return;
-                        Object.keys(o.props).forEach(function(k){
-                            try { comp.set(k, o.props[k]); } catch(e){}
-                        });
-                        anyApplied = true;
-                    } catch(e){}
-                });
-
-                return anyApplied;
-            }
-
-            /* Apply mobile overrides on tour load + retry interval untuk
-               catch komponen yg ter-render telat oleh TDV. */
-            function startEnforcer(){
-                applyMobileOverrides();
-                var tries = 0;
-                var timer = setInterval(function(){
-                    applyMobileOverrides();
-                    if(++tries > 20) clearInterval(timer);
-                }, 250);
-            }
-
-            window.addEventListener('tourLoaded', startEnforcer);
-            window.addEventListener('message', function(e){
-                if(e && e.data === 'tourLoaded') startEnforcer();
-            });
-            /* Fallback: jalankan setelah delay (player umumnya siap < 5s) */
-            setTimeout(startEnforcer, 1500);
-            setTimeout(startEnforcer, 4000);
-            setTimeout(startEnforcer, 8000);
-
-            window.addEventListener('resize', function(){
-                /* Debounce */
-                clearTimeout(window.__respEnforceT);
-                window.__respEnforceT = setTimeout(applyMobileOverrides, 200);
-            });
-            window.addEventListener('orientationchange', function(){
-                setTimeout(applyMobileOverrides, 400);
-            });
+            /* CATATAN: Positioning & centering panel kontrol bawah
+               ditangani di IIFE "CENTERING PANEL KONTROL BAWAH" (TDV API).
+               IIFE ini fokus pada perbaikan HFOV panorama di mobile. */
 
             /* ============================================================
                PERBAIKAN HFOV PANORAMA DI MOBILE (anti-fisheye / lensa 0.5)
@@ -1536,111 +1381,100 @@ loadTour()
 
     <script>
         /* ============================================================
-           CENTERING ENFORCER UNTUK PANEL KONTROL BAWAH (DESKTOP)
+           CENTERING PANEL KONTROL BAWAH -- via TDV Player API
            ============================================================
-           Di desktop kita tidak set width JS-side. Centering via CSS
-           media query (left:50% + transform:translateX(-50%)). JS
-           enforcer ini memastikan inline style mobile (left/right/
-           transform yg ditulis TDV API saat mobile pass) dibersihkan
-           saat user resize ke desktop, sehingga CSS take over.
+           SATU sumber kebenaran untuk posisi panel. Pakai TDV Player
+           API (comp.set) karena TDV tahu struktur DOM internalnya
+           sendiri (outer wrapper vs inner content). CSS `left:50%` di
+           ID tidak reliable karena ID ada di inner node, sedangkan
+           positioning ada di outer wrapper.
 
-           Di mobile (<=768px) kita TIDAK menyentuh inline style sini --
-           biarkan applyMobileOverrides yang handle.
-           ============================================================ */
+           Logika: panel di-center horizontal dengan menghitung
+           left = (viewerWidth - panelWidth) / 2, lalu set via API.
+           Di mobile, lebar panel dikecilkan supaya muat. Dipanggil saat
+           load, resize, orientationchange + retry untuk catch re-layout
+           TDV. Tidak ada CSS !important atau observer yang bersaing. */
         (function(){
             var PANEL_ID = 'Container_3F72EA07_2713_E8A1_41C0_5D817AC45A95';
+            var DEFAULT_W = 361.9;   /* lebar default panel dari script.js */
+            var DEFAULT_H = 121.65;
 
-            /* Helper: cek apakah viewport saat ini desktop (>768px). */
-            function isDesktop(){ return window.innerWidth > 768; }
+            function centerPanel(){
+                if(!window.tdvplayer || !window.tdvplayer.getById) return;
+                var comp;
+                try { comp = window.tdvplayer.getById(PANEL_ID); } catch(e){ return; }
+                if(!comp || !comp.set) return;
 
-            /* DESKTOP only: hapus inline style positioning sisa mobile,
-               lalu re-set left:50% + transform:translateX(-50%) dengan
-               !important. Skip kalau mobile (di-handle TDV API). */
-            function cleanInlineForDesktop(){
-                if(!isDesktop()) return;
-                var panel = document.getElementById(PANEL_ID);
-                if(!panel) return;
-                /* Bersihkan dulu sisa mobile */
-                panel.style.removeProperty('left');
-                panel.style.removeProperty('right');
-                panel.style.removeProperty('transform');
-                /* Lalu set ulang dengan !important agar tahan terhadap
-                   inline write berikutnya dari TDV. */
-                panel.style.setProperty('right', 'auto', 'important');
-                panel.style.setProperty('left', '50%', 'important');
-                panel.style.setProperty('transform', 'translateX(-50%)', 'important');
-                panel.style.setProperty('transform-origin', 'bottom center', 'important');
+                var viewer = document.getElementById('viewer');
+                var viewerW = (viewer && viewer.clientWidth) || window.innerWidth;
+
+                var isMobile = window.innerWidth <= 768;
+
+                /* Lebar panel: di mobile kecilkan agar muat, di desktop
+                   pakai default. */
+                var panelW = DEFAULT_W;
+                if(isMobile){
+                    panelW = Math.min(DEFAULT_W, Math.round(window.innerWidth * 0.94));
+                }
+
+                var leftPx = Math.max(0, Math.round((viewerW - panelW) / 2));
+
+                try {
+                    /* Hapus right supaya tidak konflik, set left + width via API */
+                    comp.set('right', null);
+                    comp.set('left', leftPx);
+                    comp.set('width', panelW);
+                    if(isMobile){
+                        comp.set('bottom', 16);
+                    } else {
+                        comp.set('bottom', '4.2%');
+                    }
+                } catch(e){}
             }
 
-            /* Trigger cleanInlineForDesktop berkala via setInterval supaya
-               TDV inline writes pada panel kontrol selalu di-bersihkan. */
-            function startEnforce(){
-                cleanInlineForDesktop();
+            /* Pastikan tombol toggle denah tetap visible setelah resize. */
+            function ensureDenahVisible(){
+                if(!window.tdvplayer || !window.tdvplayer.getById) return;
+                try {
+                    var btn = window.tdvplayer.getById('Image_45E0EBBC_4BCC_8DAB_41D1_1835FA1540D4');
+                    if(btn && btn.set) btn.set('visible', true);
+                } catch(e){}
+            }
+
+            function applyAll(){
+                centerPanel();
+                ensureDenahVisible();
+            }
+
+            /* Apply saat tour load + retry untuk catch komponen yg
+               ter-render telat oleh TDV. */
+            function start(){
+                applyAll();
                 var n = 0;
                 var t = setInterval(function(){
-                    cleanInlineForDesktop();
-                    if(++n > 12) clearInterval(t);
+                    applyAll();
+                    if(++n > 16) clearInterval(t);
                 }, 250);
             }
 
-            window.addEventListener('tourLoaded', startEnforce);
+            window.addEventListener('tourLoaded', start);
             window.addEventListener('message', function(e){
-                if(e && e.data === 'tourLoaded') startEnforce();
+                if(e && e.data === 'tourLoaded') start();
             });
-            setTimeout(startEnforce, 1500);
-            setTimeout(startEnforce, 4000);
+            setTimeout(start, 1500);
+            setTimeout(start, 4000);
+            setTimeout(start, 8000);
 
-            /* Resize: deteksi transisi mobile<->desktop */
-            var lastIsDesktop = isDesktop();
+            /* Re-center pada resize (mobile<->desktop) dengan debounce. */
             var debounce;
             window.addEventListener('resize', function(){
                 clearTimeout(debounce);
-                debounce = setTimeout(function(){
-                    var nowDesktop = isDesktop();
-                    if(nowDesktop && !lastIsDesktop){
-                        /* Baru saja transisi mobile -> desktop. Beberapa
-                           retry karena TDV juga melakukan re-layout sendiri. */
-                        cleanInlineForDesktop();
-                        setTimeout(cleanInlineForDesktop, 100);
-                        setTimeout(cleanInlineForDesktop, 400);
-                        setTimeout(cleanInlineForDesktop, 900);
-                    } else if(nowDesktop){
-                        cleanInlineForDesktop();
-                    }
-                    lastIsDesktop = nowDesktop;
-                }, 80);
+                debounce = setTimeout(applyAll, 120);
             });
             window.addEventListener('orientationchange', function(){
-                setTimeout(function(){
-                    if(isDesktop()) cleanInlineForDesktop();
-                }, 200);
+                setTimeout(applyAll, 250);
+                setTimeout(applyAll, 700);
             });
-
-            /* Observer: setiap kali TDV menulis ulang inline style
-               saat di desktop, bersihkan & re-apply centering. */
-            /* Pasang MutationObserver pada attribute style panel.
-               Setiap kali TDV menulis ulang style inline saat di desktop,
-               langsung re-clean & re-apply centering. Idempotent. */
-            function attachObserver(){
-                var panel = document.getElementById(PANEL_ID);
-                if(!panel || panel.__deskCenterObserved) return false;
-                try {
-                    var obs = new MutationObserver(function(){
-                        if(!isDesktop()) return;
-                        /* Hindari loop tak berhingga: cek apakah style sudah benar */
-                        if(panel.style.left !== '50%' || panel.style.transform.indexOf('translateX(-50%)') === -1){
-                            cleanInlineForDesktop();
-                        }
-                    });
-                    obs.observe(panel, { attributes: true, attributeFilter: ['style'] });
-                    panel.__deskCenterObserved = true;
-                    return true;
-                } catch(e){ return false; }
-            }
-            (function tryObserve(){
-                if(attachObserver()) return;
-                setTimeout(tryObserve, 600);
-            })();
         })();
     </script>
 
